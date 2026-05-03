@@ -1,0 +1,979 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Tamu — Reservations for restaurants</title>
+<meta name="description" content="A simple, modern reservation system for restaurants and cafés. Built for Indonesia. Start free." />
+<meta name="theme-color" content="#0E1B17" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg:        #FFFFFF;
+    --bg-soft:   #F7F5F0;       /* warm cream — used sparingly */
+    --ink:       #0E1B17;       /* deep slate w/ green undertone */
+    --ink-2:     #1F2A26;
+    --muted:     #5B6660;
+    --muted-2:   #8B948F;
+    --line:      #ECEEEC;
+    --line-2:    #E1E5E1;
+    --brand:     #1B5E3F;       /* deep forest — hospitality, not default emerald */
+    --brand-2:   #154D33;
+    --brand-soft:#E8F0EB;
+    --accent:    #C2410C;       /* warm orange — used in a single moment */
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    font-feature-settings: "cv11", "ss01";
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    line-height: 1.55;
+    font-size: 16px;
+  }
+  a { color: inherit; text-decoration: none; }
+  ::selection { background: var(--brand-soft); color: var(--brand-2); }
+
+  /* ---------- Layout ---------- */
+  .wrap { max-width: 1160px; margin: 0 auto; padding: 0 28px; }
+  .narrow { max-width: 880px; margin: 0 auto; padding: 0 28px; }
+
+  /* ---------- Type ---------- */
+  h1, h2, h3, h4 { margin: 0; font-weight: 600; letter-spacing: -0.022em; color: var(--ink); }
+  h1 { font-size: clamp(40px, 5.6vw, 60px); line-height: 1.04; letter-spacing: -0.028em; font-weight: 600; }
+  h2 { font-size: clamp(28px, 3.4vw, 40px); line-height: 1.12; letter-spacing: -0.022em; }
+  h3 { font-size: 18px; line-height: 1.4; }
+  p  { margin: 0; color: var(--muted); }
+  .lead { font-size: 18px; line-height: 1.55; color: var(--muted); }
+  .eyebrow {
+    display: inline-block;
+    font-size: 13px; font-weight: 500; color: var(--brand);
+    letter-spacing: 0.01em;
+  }
+  .num { font-variant-numeric: tabular-nums; }
+
+  /* ---------- Buttons ---------- */
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 0 18px; height: 42px; border-radius: 10px;
+    font-size: 14.5px; font-weight: 500; letter-spacing: -0.005em;
+    border: 1px solid transparent;
+    transition: background .15s ease, border-color .15s ease, color .15s ease, transform .15s ease;
+    white-space: nowrap;
+  }
+  .btn-primary {
+    background: var(--ink); color: #fff;
+  }
+  .btn-primary:hover { background: #000; }
+  .btn-brand {
+    background: var(--brand); color: #fff;
+  }
+  .btn-brand:hover { background: var(--brand-2); }
+  .btn-ghost {
+    color: var(--ink);
+  }
+  .btn-ghost:hover { color: var(--brand-2); }
+  .btn-outline {
+    border-color: var(--line-2); color: var(--ink); background: #fff;
+  }
+  .btn-outline:hover { border-color: var(--ink); }
+  .btn-arrow svg { transition: transform .2s ease; }
+  .btn-arrow:hover svg { transform: translateX(2px); }
+
+  /* ---------- Nav ---------- */
+  nav.top {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(255,255,255,.78);
+    backdrop-filter: saturate(180%) blur(14px);
+    border-bottom: 1px solid var(--line);
+  }
+  nav.top .row {
+    display: flex; align-items: center; height: 64px; gap: 32px;
+  }
+  nav.top .brand { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; letter-spacing: -0.02em; font-size: 18px; }
+  nav.top .brand .mark {
+    width: 24px; height: 24px; border-radius: 6px;
+    background: var(--brand); color: #fff; display: grid; place-items: center;
+    font-size: 13px; font-weight: 700;
+  }
+  nav.top .links { display: flex; gap: 26px; font-size: 14px; color: var(--muted); }
+  nav.top .links a:hover { color: var(--ink); }
+  nav.top .right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  @media (max-width: 760px) {
+    nav.top .links { display: none; }
+  }
+
+  /* ---------- Hero ---------- */
+  .hero { padding: 84px 0 96px; }
+  .hero .eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 12px; border-radius: 999px;
+    background: var(--brand-soft); color: var(--brand-2);
+    font-size: 12.5px; font-weight: 500;
+  }
+  .hero .eyebrow .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--brand); }
+  .hero h1 { margin-top: 22px; max-width: 880px; }
+  .hero h1 span.brand-text { color: var(--brand); }
+  .hero p.lead { margin-top: 22px; max-width: 600px; font-size: 19px; }
+  .hero .ctas { margin-top: 32px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .hero .meta { margin-top: 18px; font-size: 13.5px; color: var(--muted-2); }
+  .hero .meta b { color: var(--ink); font-weight: 500; }
+
+  /* hero product image */
+  .hero-shot {
+    margin-top: 64px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    overflow: hidden;
+    background: #fff;
+    box-shadow:
+      0 1px 0 rgba(14,27,23,.04),
+      0 24px 60px -28px rgba(14,27,23,.18),
+      0 80px 120px -40px rgba(14,27,23,.10);
+  }
+  .browser-bar {
+    height: 38px;
+    border-bottom: 1px solid var(--line);
+    background: #FBFBF9;
+    display: flex; align-items: center; padding: 0 14px; gap: 6px;
+  }
+  .browser-bar .dot { width: 10px; height: 10px; border-radius: 50%; background: #E1E5E1; }
+  .browser-bar .url {
+    margin-left: 10px;
+    font-size: 12px; color: var(--muted-2);
+    background: #fff; padding: 5px 12px;
+    border-radius: 6px; border: 1px solid var(--line);
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .browser-bar .url svg { width: 12px; height: 12px; }
+  .browser-bar .live {
+    margin-left: auto;
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11.5px; color: var(--brand-2); font-weight: 500;
+  }
+  .browser-bar .live .pdot { width: 6px; height: 6px; border-radius: 50%; background: var(--brand); position: relative; }
+  .browser-bar .live .pdot::before {
+    content: ""; position: absolute; inset: -3px; border-radius: 50%;
+    border: 1px solid var(--brand); opacity: .35; animation: ring 2s infinite;
+  }
+  @keyframes ring { 0%{transform:scale(.8); opacity:.5;} 100%{transform:scale(1.6); opacity:0;} }
+
+  .app {
+    display: grid; grid-template-columns: 220px 1fr; min-height: 540px;
+  }
+  .app aside {
+    border-right: 1px solid var(--line); padding: 18px 14px;
+    background: #FCFCFA;
+  }
+  .app aside .brand-line { display: flex; align-items: center; gap: 8px; margin-bottom: 22px; padding: 4px; }
+  .app aside .brand-line .mk { width: 22px; height: 22px; border-radius: 6px; background: var(--ink); color: #fff; display:grid; place-items:center; font-size: 11px; font-weight: 700; }
+  .app aside .brand-line span { font-weight: 600; font-size: 14.5px; }
+  .app aside .group-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted-2); padding: 12px 8px 6px; font-weight: 500; }
+  .app aside a {
+    display: flex; align-items: center; gap: 10px; padding: 8px 10px;
+    font-size: 13.5px; color: var(--ink-2); border-radius: 8px; line-height: 1.2;
+  }
+  .app aside a.on { background: var(--ink); color: #fff; }
+  .app aside a .ic { width: 16px; height: 16px; opacity: .85; }
+  .app aside a .count { margin-left: auto; font-size: 11px; color: var(--muted-2); }
+  .app aside a.on .count { color: #C7CCC9; }
+
+  .app main { padding: 20px 22px; }
+  .app .topline {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 18px;
+  }
+  .app .topline h4 { font-size: 17px; font-weight: 600; }
+  .app .topline .crumb { color: var(--muted-2); font-size: 13px; }
+  .app .topline .right { margin-left: auto; display: flex; gap: 8px; }
+  .app .topline .pill {
+    display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px;
+    background: var(--brand-soft); color: var(--brand-2);
+    border-radius: 999px; font-size: 11.5px; font-weight: 500;
+  }
+  .app .topline .pill .pdot { width: 6px; height: 6px; border-radius: 50%; background: var(--brand); }
+  .app .topline .add {
+    background: var(--ink); color: #fff;
+    padding: 6px 12px; border-radius: 8px; font-size: 12.5px; font-weight: 500;
+  }
+
+  .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+  .kpi {
+    border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px;
+  }
+  .kpi .lbl { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted-2); font-weight: 500; }
+  .kpi .v { font-size: 20px; font-weight: 600; margin-top: 4px; letter-spacing: -0.02em; }
+  .kpi .delta { font-size: 11.5px; color: var(--brand); font-weight: 500; margin-left: 6px; }
+
+  .split { display: grid; grid-template-columns: 1.6fr 1fr; gap: 10px; }
+  .panel { border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+  .panel h5 { font-size: 13px; font-weight: 600; margin: 0 0 12px; }
+
+  .timeline { position: relative; height: 200px; background: #FBFBF9; border: 1px solid var(--line); border-radius: 8px; }
+  .timeline .hours {
+    display: grid; grid-template-columns: repeat(12, 1fr);
+    padding: 8px 8px 0; font-size: 9.5px; color: var(--muted-2); font-variant-numeric: tabular-nums;
+  }
+  .timeline .now {
+    position: absolute; top: 24px; bottom: 8px; width: 2px; background: var(--accent);
+    left: 73%;
+  }
+  .timeline .now::after {
+    content: "19:24"; position: absolute; top: -2px; left: -16px;
+    font-size: 9px; font-weight: 600; color: #fff;
+    background: var(--accent); padding: 1px 5px; border-radius: 3px;
+  }
+  .timeline .bar {
+    position: absolute; height: 16px; border-radius: 4px;
+    border: 1px solid; font-size: 9px; line-height: 14px; padding: 0 5px;
+    color: var(--ink); font-weight: 500;
+    overflow: hidden; white-space: nowrap;
+  }
+  .timeline .bar.confirmed { background: #E8F0EB; border-color: var(--brand); color: var(--brand-2); }
+  .timeline .bar.seated    { background: #E8F0EB; border-color: var(--brand); color: var(--brand-2); }
+  .timeline .bar.pending   { background: #FBF1E1; border-color: #C2410C; color: #8C2E08; }
+  .timeline .bar.waitlist  { background: #ECECF3; border-color: #6B6FA0; color: #3D4076; }
+  .timeline .row-lbl { position: absolute; left: 8px; font-size: 9px; color: var(--muted-2); letter-spacing: 0.04em; text-transform: uppercase; font-weight: 500; }
+
+  .floor { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .tile {
+    aspect-ratio: 1.05/1; border: 1.5px solid var(--line-2); border-radius: 6px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 1px; font-size: 10px; color: var(--muted);
+  }
+  .tile.round { border-radius: 50%; }
+  .tile b { color: var(--ink); font-size: 12px; font-weight: 600; }
+  .tile.seated { background: #E8F0EB; border-color: var(--brand); color: var(--brand-2); }
+  .tile.upcoming { background: #FBF1E1; border-color: #C2410C; color: #8C2E08; }
+  .tile.attn { background: #FBE8E8; border-color: #B23A3A; color: #6B1E1E; }
+  .floor-foot {
+    margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px 12px; font-size: 10.5px; color: var(--muted-2);
+  }
+  .floor-foot span { display: inline-flex; align-items: center; gap: 5px; }
+  .floor-foot i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
+
+  /* ---------- Logo strip ---------- */
+  .logos {
+    border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+    padding: 28px 0; background: #FCFCFA;
+  }
+  .logos .row {
+    display: flex; align-items: center; gap: 48px; flex-wrap: wrap;
+    justify-content: center; opacity: .9;
+  }
+  .logos .label {
+    font-size: 12.5px; color: var(--muted); margin-right: 8px;
+  }
+  .logos .lg {
+    color: var(--muted); font-weight: 500; font-size: 17px; letter-spacing: -0.01em;
+  }
+  .logos .lg.serif { font-family: Georgia, serif; font-style: italic; font-weight: 400; }
+  .logos .lg.tight { letter-spacing: 0.04em; font-weight: 600; text-transform: uppercase; font-size: 14.5px; }
+
+  /* ---------- Section base ---------- */
+  section.s { padding: 112px 0; }
+  section.s .head { max-width: 720px; margin: 0 auto 64px; text-align: center; }
+  section.s .head.left { margin-left: 0; text-align: left; }
+  section.s .head h2 { margin-top: 16px; }
+  section.s .head p.lead { margin-top: 18px; }
+
+  /* ---------- Three features ---------- */
+  .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; }
+  .feat .icon-wrap {
+    width: 40px; height: 40px; border-radius: 10px;
+    background: var(--brand-soft); color: var(--brand-2);
+    display: grid; place-items: center; margin-bottom: 18px;
+  }
+  .feat .icon-wrap svg { width: 20px; height: 20px; }
+  .feat h3 { font-size: 18px; font-weight: 600; }
+  .feat p { margin-top: 8px; font-size: 14.5px; line-height: 1.55; color: var(--muted); }
+  @media (max-width: 880px) { .features { grid-template-columns: 1fr; gap: 20px; } }
+
+  /* ---------- Showcase (alternating) ---------- */
+  .show {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: center;
+  }
+  .show.flip > :first-child { order: 2; }
+  .show .copy h2 { margin-top: 14px; max-width: 480px; }
+  .show .copy p.lead { margin-top: 18px; max-width: 480px; font-size: 17px; }
+  .show .copy ul {
+    margin: 28px 0 0; padding: 0; list-style: none;
+    display: grid; gap: 14px; max-width: 480px;
+  }
+  .show .copy ul li {
+    display: flex; gap: 12px; font-size: 14.5px; line-height: 1.5; color: var(--ink-2);
+  }
+  .show .copy ul li::before {
+    content: ""; flex-shrink: 0; width: 18px; height: 18px; border-radius: 50%;
+    background: var(--brand-soft); margin-top: 2px;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'><path d='M5 10.5l3 3 7-7' fill='none' stroke='%231B5E3F' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+    background-repeat: no-repeat; background-position: center;
+  }
+  .show .copy a.link {
+    display: inline-flex; align-items: center; gap: 6px;
+    margin-top: 28px; color: var(--brand); font-weight: 500; font-size: 14.5px;
+  }
+  .show .copy a.link svg { width: 14px; height: 14px; transition: transform .2s ease; }
+  .show .copy a.link:hover svg { transform: translateX(2px); }
+
+  .show .visual {
+    border: 1px solid var(--line); border-radius: 14px;
+    background: #fff; padding: 22px;
+    box-shadow: 0 18px 48px -22px rgba(14,27,23,.16);
+  }
+  @media (max-width: 960px) {
+    .show, .show.flip { grid-template-columns: 1fr; gap: 36px; }
+    .show.flip > :first-child { order: 0; }
+  }
+
+  /* visual: floor */
+  .v-floor { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .v-floor .tile { aspect-ratio: 1.1/1; }
+
+  /* visual: WhatsApp */
+  .v-wa { display: flex; flex-direction: column; gap: 10px; padding: 8px 6px; }
+  .wa-msg {
+    background: #F1F4F2; border: 1px solid var(--line); border-radius: 10px;
+    padding: 12px 14px; font-size: 13.5px; line-height: 1.5; color: var(--ink-2);
+    max-width: 86%;
+  }
+  .wa-msg.mine { background: #E8F0EB; border-color: #BDD3C5; align-self: flex-end; }
+  .wa-msg .meta { font-size: 11px; color: var(--muted-2); margin-top: 6px; }
+  .wa-msg b { color: var(--ink); font-weight: 600; }
+
+  /* ---------- Stats band ---------- */
+  .stats {
+    background: var(--bg-soft);
+    border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+    padding: 80px 0;
+  }
+  .stats .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
+  .stats .item { border-left: 2px solid var(--brand); padding-left: 16px; }
+  .stats .v { font-size: 38px; font-weight: 600; letter-spacing: -0.025em; line-height: 1; }
+  .stats .l { margin-top: 8px; font-size: 13.5px; color: var(--muted); line-height: 1.5; }
+  @media (max-width: 880px) { .stats .grid { grid-template-columns: 1fr 1fr; gap: 28px; } }
+
+  /* ---------- Quote ---------- */
+  .quote { padding: 112px 0; }
+  .quote blockquote {
+    margin: 0; font-size: clamp(24px, 3vw, 34px); line-height: 1.32;
+    font-weight: 500; letter-spacing: -0.018em;
+    max-width: 880px; color: var(--ink);
+  }
+  .quote blockquote span.hl { background: linear-gradient(transparent 60%, #FBF1E1 60%); }
+  .quote .who {
+    display: flex; align-items: center; gap: 14px; margin-top: 32px;
+  }
+  .quote .who .av {
+    width: 44px; height: 44px; border-radius: 50%;
+    background: #ECE3D5; color: #6B5C42;
+    display: grid; place-items: center; font-weight: 600; font-size: 15px;
+  }
+  .quote .who .tx { font-size: 14px; }
+  .quote .who .tx b { color: var(--ink); font-weight: 600; display: block; }
+  .quote .who .tx span { color: var(--muted); }
+
+  /* ---------- Pricing ---------- */
+  .pricing { padding-bottom: 24px; }
+  .pricing .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .price-card {
+    border: 1px solid var(--line); border-radius: 14px; padding: 30px;
+    background: #fff;
+    display: flex; flex-direction: column; gap: 18px;
+  }
+  .price-card.featured {
+    border-color: var(--ink); box-shadow: 0 18px 48px -20px rgba(14,27,23,.18);
+    position: relative;
+  }
+  .price-card.featured::before {
+    content: "Most popular"; position: absolute; top: -10px; left: 24px;
+    background: var(--ink); color: #fff;
+    font-size: 11px; font-weight: 500; padding: 3px 10px; border-radius: 999px;
+    letter-spacing: -0.005em;
+  }
+  .price-card h3 { font-size: 17px; font-weight: 600; }
+  .price-card .desc { font-size: 13.5px; color: var(--muted); line-height: 1.5; min-height: 40px; }
+  .price-card .price { display: flex; align-items: baseline; gap: 6px; }
+  .price-card .price .v { font-size: 38px; font-weight: 600; letter-spacing: -0.028em; line-height: 1; }
+  .price-card .price .u { font-size: 13.5px; color: var(--muted); }
+  .price-card .cta { display: flex; }
+  .price-card .cta .btn { width: 100%; justify-content: center; }
+  .price-card ul {
+    margin: 0; padding: 0; list-style: none;
+    border-top: 1px solid var(--line); padding-top: 18px;
+    display: grid; gap: 10px;
+  }
+  .price-card li {
+    display: flex; gap: 10px; font-size: 14px; color: var(--ink-2); line-height: 1.5;
+  }
+  .price-card li::before {
+    content: ""; flex-shrink: 0; width: 16px; height: 16px; margin-top: 3px;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'><path d='M5 10l3 3 7-7' fill='none' stroke='%231B5E3F' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+    background-repeat: no-repeat; background-position: center;
+  }
+  .price-foot {
+    margin-top: 28px; text-align: center;
+    font-size: 13px; color: var(--muted);
+  }
+  @media (max-width: 960px) { .pricing .cards { grid-template-columns: 1fr; gap: 16px; } }
+
+  /* ---------- Final CTA ---------- */
+  .cta-band {
+    background: var(--ink);
+    color: #fff;
+    padding: 96px 0;
+  }
+  .cta-band h2 { color: #fff; max-width: 720px; }
+  .cta-band p { margin-top: 18px; max-width: 560px; color: #B6BFB9; font-size: 17px; }
+  .cta-band .form {
+    margin-top: 32px;
+    display: flex; gap: 10px; max-width: 480px; flex-wrap: wrap;
+  }
+  .cta-band input {
+    flex: 1; min-width: 240px;
+    height: 48px; padding: 0 16px;
+    border-radius: 10px; border: 1px solid #2A3631; background: #14211C;
+    color: #fff; font-family: inherit; font-size: 14.5px;
+  }
+  .cta-band input::placeholder { color: #6F7975; }
+  .cta-band input:focus { outline: 0; border-color: var(--brand); }
+  .cta-band button {
+    height: 48px; padding: 0 22px;
+    border: 0; border-radius: 10px;
+    background: var(--brand); color: #fff;
+    font-family: inherit; font-size: 14.5px; font-weight: 500;
+    cursor: pointer;
+  }
+  .cta-band button:hover { background: #1F6B47; }
+  .cta-band .fine { margin-top: 16px; font-size: 13px; color: #6F7975; }
+
+  /* ---------- Footer ---------- */
+  footer.foot {
+    border-top: 1px solid var(--line);
+    padding: 56px 0 32px;
+    background: #FCFCFA;
+  }
+  footer.foot .grid {
+    display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 48px;
+  }
+  footer.foot h5 {
+    font-size: 12px; font-weight: 600; color: var(--ink);
+    text-transform: uppercase; letter-spacing: 0.06em;
+    margin: 0 0 14px;
+  }
+  footer.foot ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; font-size: 14px; }
+  footer.foot ul a { color: var(--muted); }
+  footer.foot ul a:hover { color: var(--ink); }
+  footer.foot .brand-line { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 17px; }
+  footer.foot .brand-line .mk { width: 22px; height: 22px; border-radius: 6px; background: var(--brand); color: #fff; display: grid; place-items: center; font-size: 12px; font-weight: 700; }
+  footer.foot .about { margin-top: 14px; font-size: 13.5px; color: var(--muted); max-width: 320px; line-height: 1.55; }
+  footer.foot .end {
+    margin-top: 56px; padding-top: 22px; border-top: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: space-between; gap: 20px;
+    flex-wrap: wrap;
+    font-size: 12.5px; color: var(--muted-2);
+  }
+  footer.foot .end .lang { display: inline-flex; gap: 6px; }
+  footer.foot .end .lang button {
+    background: transparent; border: 1px solid var(--line-2);
+    padding: 4px 10px; border-radius: 6px;
+    font-size: 11.5px; font-family: inherit; color: var(--muted); cursor: pointer;
+  }
+  footer.foot .end .lang button.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+  @media (max-width: 880px) { footer.foot .grid { grid-template-columns: 1fr 1fr; gap: 32px; } }
+
+  /* ---------- Hero shot responsive ---------- */
+  @media (max-width: 760px) {
+    .app { grid-template-columns: 1fr; min-height: auto; }
+    .app aside { display: none; }
+    .kpi-row { grid-template-columns: 1fr 1fr; }
+    .split { grid-template-columns: 1fr; }
+  }
+
+  .icon-stroke { stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+</style>
+</head>
+<body>
+
+<!-- ====================== NAV ====================== -->
+<nav class="top">
+  <div class="wrap row">
+    <a class="brand" href="#">
+      <span class="mark">T</span>
+      <span>Tamu</span>
+    </a>
+    <div class="links">
+      <a href="#product">Product</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#customers">Customers</a>
+      <a href="#" >Docs</a>
+    </div>
+    <div class="right">
+      <a class="btn btn-ghost" href="#">Sign in</a>
+      <a class="btn btn-brand" href="#start">Start free</a>
+    </div>
+  </div>
+</nav>
+
+
+<!-- ====================== HERO ====================== -->
+<section class="hero">
+  <div class="wrap">
+    <span class="eyebrow">
+      <span class="dot"></span>
+      Reservation engine for restaurants &amp; cafés
+    </span>
+    <h1>Run your restaurant.<br/>We&rsquo;ll run the <span class="brand-text">bookings</span>.</h1>
+    <p class="lead">Tamu replaces WhatsApp threads and paper books with a modern reservation system — built for the way Indonesian restaurants actually work.</p>
+    <div class="ctas">
+      <a class="btn btn-brand btn-arrow" href="#start">
+        Start free trial
+        <svg width="14" height="14" viewBox="0 0 24 24" class="icon-stroke"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+      </a>
+      <a class="btn btn-outline" href="#friday">See it in action</a>
+    </div>
+    <p class="meta"><b>Free 14-day Pro trial.</b> No credit card. From IDR 999k/mo after.</p>
+
+    <!-- HERO PRODUCT SHOT -->
+    <div class="hero-shot">
+      <div class="browser-bar">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="url">
+          <svg viewBox="0 0 24 24" class="icon-stroke"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          app.tamu.io / sajiwa-scbd
+        </span>
+        <span class="live"><span class="pdot"></span> Live</span>
+      </div>
+      <div class="app">
+        <aside>
+          <div class="brand-line"><span class="mk">T</span><span>Tamu</span></div>
+          <div class="group-label">Operate</div>
+          <a class="on">
+            <svg class="ic icon-stroke" viewBox="0 0 24 24"><path d="M3 12h4l3-9 4 18 3-9h4"/></svg>
+            Live service <span class="count" style="color:#C7CCC9">12</span>
+          </a>
+          <a>
+            <svg class="ic icon-stroke" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+            Reservations <span class="count">47</span>
+          </a>
+          <a>
+            <svg class="ic icon-stroke" viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M5 21a7 7 0 0 1 14 0"/></svg>
+            Walk-ins <span class="count">3</span>
+          </a>
+          <a>
+            <svg class="ic icon-stroke" viewBox="0 0 24 24"><path d="M12 6v6l4 2"/><circle cx="12" cy="12" r="9"/></svg>
+            Waitlist
+          </a>
+          <div class="group-label">Manage</div>
+          <a>
+            <svg class="ic icon-stroke" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+            Tables
+          </a>
+          <a>
+            <svg class="ic icon-stroke" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-8 0v2"/><circle cx="12" cy="7" r="4"/></svg>
+            Guests
+          </a>
+          <a>
+            <svg class="ic icon-stroke" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M18 9l-5 5-3-3-4 4"/></svg>
+            Reports
+          </a>
+        </aside>
+        <main>
+          <div class="topline">
+            <h4>Today</h4>
+            <span class="crumb">Tue, 28 Apr · Sajiwa SCBD</span>
+            <div class="right">
+              <span class="pill"><span class="pdot"></span> Live</span>
+              <a class="add">+ Walk-in</a>
+            </div>
+          </div>
+
+          <div class="kpi-row">
+            <div class="kpi">
+              <div class="lbl">Covers</div>
+              <div class="v num">128 <span class="delta">+12%</span></div>
+            </div>
+            <div class="kpi">
+              <div class="lbl">Check-ins</div>
+              <div class="v num">34 / 47</div>
+            </div>
+            <div class="kpi">
+              <div class="lbl">No-shows</div>
+              <div class="v num">2 <span class="delta">−1</span></div>
+            </div>
+            <div class="kpi">
+              <div class="lbl">Occupancy</div>
+              <div class="v num">78%</div>
+            </div>
+          </div>
+
+          <div class="split">
+            <div class="panel">
+              <h5>Today's timeline</h5>
+              <div class="timeline">
+                <div class="hours">
+                  <span>11</span><span>12</span><span>13</span><span>14</span><span>15</span><span>16</span>
+                  <span>17</span><span>18</span><span>19</span><span>20</span><span>21</span><span>22</span>
+                </div>
+                <span class="row-lbl" style="top:34px">INDOOR</span>
+                <span class="row-lbl" style="top:74px">OUTDOOR</span>
+                <span class="row-lbl" style="top:114px">PRIVATE</span>
+                <span class="row-lbl" style="top:154px">BAR</span>
+                <div class="now"></div>
+                <!-- bars -->
+                <div class="bar seated"    style="left:9%;  top:48px; width:11%">12:00 · Budi (4)</div>
+                <div class="bar seated"    style="left:50%; top:48px; width:11%">18:00 · Hendra</div>
+                <div class="bar confirmed" style="left:67%; top:48px; width:11%">19:30 · Sari W.</div>
+                <div class="bar pending"   style="left:79%; top:48px; width:11%">21:00 · Joshua</div>
+                <div class="bar seated"    style="left:14%; top:88px; width:14%">12:30 · Tim Astra</div>
+                <div class="bar seated"    style="left:60%; top:88px; width:13%">19:00 · Yuni</div>
+                <div class="bar confirmed" style="left:74%; top:88px; width:13%">19:45 · Andi</div>
+                <div class="bar seated"    style="left:55%; top:128px; width:22%">18:30 · PT Nusantara (12)</div>
+                <div class="bar confirmed" style="left:79%; top:128px; width:18%">20:00 · Larasati (6)</div>
+                <div class="bar seated"    style="left:75%; top:168px; width:9%">walk-in</div>
+                <div class="bar pending"   style="left:85%; top:168px; width:9%">Resa</div>
+              </div>
+            </div>
+            <div class="panel">
+              <h5>Floor</h5>
+              <div class="floor">
+                <div class="tile seated"><b>T2</b><span>4 · 18m</span></div>
+                <div class="tile"><b>T1</b><span>open</span></div>
+                <div class="tile seated"><b>T3</b><span>2 · 32m</span></div>
+                <div class="tile upcoming"><b>T7</b><span>4 · 19:30</span></div>
+                <div class="tile upcoming"><b>T8</b><span>6 · 20:30</span></div>
+                <div class="tile"><b>T6</b><span>open</span></div>
+                <div class="tile round seated"><b>O1</b><span>3 · 12m</span></div>
+                <div class="tile round upcoming"><b>O2</b><span>2 · 19:45</span></div>
+                <div class="tile round attn"><b>O4</b><span>WL · 4</span></div>
+              </div>
+              <div class="floor-foot">
+                <span><i style="background:#1B5E3F"></i>Seated</span>
+                <span><i style="background:#C2410C"></i>Upcoming</span>
+                <span><i style="background:#B23A3A"></i>Attention</span>
+                <span><i style="background:#E1E5E1"></i>Open</span>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ====================== LOGOS ====================== -->
+<section class="logos" id="customers">
+  <div class="wrap row">
+    <span class="label">Trusted by 200+ restaurants and cafés across Indonesia</span>
+    <span class="lg serif">Sajiwa</span>
+    <span class="lg tight">Kopi Tujuh</span>
+    <span class="lg serif">Lumbung Makan</span>
+    <span class="lg tight">Pelangi Pantai</span>
+    <span class="lg serif">Meja Kayu</span>
+    <span class="lg tight">Taman Sari</span>
+  </div>
+</section>
+
+
+<!-- ====================== THREE FEATURES ====================== -->
+<section class="s" id="product">
+  <div class="wrap">
+    <div class="head">
+      <span class="eyebrow">What's inside</span>
+      <h2>Everything your hosts need.<br/>Nothing they don&rsquo;t.</h2>
+      <p class="lead">Three simple ideas, executed without compromise.</p>
+    </div>
+
+    <div class="features">
+      <div class="feat">
+        <div class="icon-wrap">
+          <svg viewBox="0 0 24 24" class="icon-stroke" stroke="currentColor"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        </div>
+        <h3>Zero double-bookings</h3>
+        <p>A two-layer lock — Redis plus a Postgres unique index — guarantees the same table can&rsquo;t be reserved twice. Even on a Friday at 19:30.</p>
+      </div>
+      <div class="feat">
+        <div class="icon-wrap">
+          <svg viewBox="0 0 24 24" class="icon-stroke" stroke="currentColor"><path d="M21 12a9 9 0 1 1-3.5-7.1L21 3l-1 4-3.7-.5"/></svg>
+        </div>
+        <h3>WhatsApp reminders &amp; waitlist</h3>
+        <p>Automated reminders 24h and 1h before, sent from your registered Fonnte or Wablas number. Cancellations auto-promote the waitlist.</p>
+      </div>
+      <div class="feat">
+        <div class="icon-wrap">
+          <svg viewBox="0 0 24 24" class="icon-stroke" stroke="currentColor"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        </div>
+        <h3>Live floor &amp; walk-ins</h3>
+        <p>One screen for the whole service — color-coded floor, today&rsquo;s timeline, walk-ins added in two taps. Updates in real time.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ====================== SHOWCASE 1 ====================== -->
+<section class="s" id="friday" style="background: var(--bg-soft); border-top:1px solid var(--line); border-bottom:1px solid var(--line);">
+  <div class="wrap">
+    <div class="show">
+      <div class="copy">
+        <span class="eyebrow">Live service</span>
+        <h2>Run a busy Friday from one screen.</h2>
+        <p class="lead">Today&rsquo;s timeline on the left, the floor plan on the right, real-time updates throughout. Your hosts seat, move, and check in guests in two taps — without scrolling, refreshing, or remembering anything.</p>
+        <ul>
+          <li>Color-coded reservation states across the entire timeline</li>
+          <li>Walk-ins captured in 3 taps with table suggestions</li>
+          <li>⌘K to find any guest by name, phone, or confirmation code</li>
+          <li>WebSocket-powered — new bookings appear instantly</li>
+        </ul>
+        <a class="link" href="#start">See the full dashboard
+          <svg viewBox="0 0 24 24" class="icon-stroke" stroke="currentColor"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+        </a>
+      </div>
+      <div class="visual">
+        <div class="v-floor">
+          <div class="tile seated"><b>T2</b><span>4 · 18m</span></div>
+          <div class="tile"><b>T1</b><span>open</span></div>
+          <div class="tile seated"><b>T3</b><span>2 · 32m</span></div>
+          <div class="tile upcoming"><b>T7</b><span>4 · 19:30</span></div>
+          <div class="tile upcoming"><b>T8</b><span>6 · 20:30</span></div>
+          <div class="tile"><b>T6</b><span>open</span></div>
+          <div class="tile round seated"><b>O1</b><span>3 · 12m</span></div>
+          <div class="tile round upcoming"><b>O2</b><span>2 · 19:45</span></div>
+          <div class="tile round attn"><b>O4</b><span>WL · 4</span></div>
+          <div class="tile round seated"><b>O5</b><span>2 · 24m</span></div>
+          <div class="tile seated"><b>P1</b><span>12 · 90m</span></div>
+          <div class="tile upcoming"><b>P2</b><span>6 · 20:00</span></div>
+        </div>
+        <div class="floor-foot" style="margin-top:14px;">
+          <span><i style="background:#1B5E3F"></i>Seated</span>
+          <span><i style="background:#C2410C"></i>Upcoming</span>
+          <span><i style="background:#B23A3A"></i>Attention</span>
+          <span><i style="background:#E1E5E1"></i>Open</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ====================== SHOWCASE 2 ====================== -->
+<section class="s">
+  <div class="wrap">
+    <div class="show flip">
+      <div class="copy">
+        <span class="eyebrow">WhatsApp built in</span>
+        <h2>The reminder you don&rsquo;t have to send.</h2>
+        <p class="lead">Tamu sends WhatsApp confirmations and reminders from your number. When a guest cancels, the next person on the waitlist is automatically offered the slot — with a 30-minute window to claim it.</p>
+        <ul>
+          <li>Templates with merge tags — name, time, party size, occasion</li>
+          <li>Per-restaurant Fonnte / Wablas integration · your sender, your brand</li>
+          <li>Email fallback if WhatsApp fails — no manual chasing</li>
+          <li>Replies route back to the right reservation automatically</li>
+        </ul>
+        <a class="link" href="#start">Try a sample reminder
+          <svg viewBox="0 0 24 24" class="icon-stroke" stroke="currentColor"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+        </a>
+      </div>
+      <div class="visual">
+        <div class="v-wa">
+          <div class="wa-msg">
+            Hi Larasati 👋 Reminder: your reservation at <b>Sajiwa SCBD</b> for 6 is tomorrow at <b>20:00</b>. Reply <b>OK</b> to confirm or <b>CHANGE</b> to reschedule.
+            <div class="meta">Tamu via WA · 19:30 · delivered</div>
+          </div>
+          <div class="wa-msg mine">
+            OK
+            <div class="meta">19:31</div>
+          </div>
+          <div class="wa-msg" style="background:#FBF1E1; border-color:#F0DBB6;">
+            A table for 4 just opened up at <b>19:45</b>. Confirm in 30 min to claim it.
+            <div class="meta">Tamu · waitlist promoted · 19:14</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ====================== STATS ====================== -->
+<section class="stats">
+  <div class="wrap">
+    <div class="grid">
+      <div class="item">
+        <div class="v num">−43%</div>
+        <div class="l">Average reduction in no-shows after the first month.</div>
+      </div>
+      <div class="item">
+        <div class="v num">+18%</div>
+        <div class="l">More covers per service, from waitlist auto-promotion alone.</div>
+      </div>
+      <div class="item">
+        <div class="v num">12 hrs</div>
+        <div class="l">Per week, saved per restaurant — versus running on WhatsApp.</div>
+      </div>
+      <div class="item">
+        <div class="v num">200+</div>
+        <div class="l">Restaurants and cafés on Tamu, from Bali to Jakarta.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ====================== QUOTE ====================== -->
+<section class="quote">
+  <div class="narrow">
+    <blockquote>
+      &ldquo;<span class="hl">Tamu paid for itself the first weekend.</span> Our hosts stopped chasing WhatsApp messages, and we filled three waitlist tables on a single Saturday that would have stayed empty before.&rdquo;
+    </blockquote>
+    <div class="who">
+      <div class="av">DK</div>
+      <div class="tx">
+        <b>Dewi Kartini</b>
+        <span>Co-founder · Kopi Tujuh, Bali</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ====================== PRICING ====================== -->
+<section class="s pricing" id="pricing">
+  <div class="wrap">
+    <div class="head">
+      <span class="eyebrow">Pricing</span>
+      <h2>Simple plans. Indonesian rupiah.</h2>
+      <p class="lead">Start free. Upgrade when you need WhatsApp reminders, deposits, or more staff.</p>
+    </div>
+
+    <div class="cards">
+      <!-- Starter -->
+      <div class="price-card">
+        <div>
+          <h3>Starter</h3>
+          <p class="desc">For new restaurants getting their first online bookings.</p>
+        </div>
+        <div class="price"><span class="v">IDR 0</span><span class="u">/mo · forever</span></div>
+        <div class="cta"><a class="btn btn-outline" href="#start">Start free</a></div>
+        <ul>
+          <li>Up to 50 reservations / month</li>
+          <li>1 staff account</li>
+          <li>Public booking page + QR</li>
+          <li>Email confirmations</li>
+          <li>7-day reservation history</li>
+        </ul>
+      </div>
+
+      <!-- Pro -->
+      <div class="price-card featured">
+        <div>
+          <h3>Pro</h3>
+          <p class="desc">Everything most restaurants need to run service end-to-end.</p>
+        </div>
+        <div class="price"><span class="v">IDR 999k</span><span class="u">/mo · 14-day trial</span></div>
+        <div class="cta"><a class="btn btn-brand" href="#start">Start trial</a></div>
+        <ul>
+          <li>Unlimited reservations</li>
+          <li>Up to 5 staff accounts</li>
+          <li>WhatsApp reminders (Fonnte / Wablas)</li>
+          <li>Waitlist with auto-promotion</li>
+          <li>Guest CRM &amp; visit history</li>
+          <li>Deposits via Midtrans / Xendit</li>
+          <li>Floor plan editor &amp; analytics</li>
+        </ul>
+      </div>
+
+      <!-- Business -->
+      <div class="price-card">
+        <div>
+          <h3>Business</h3>
+          <p class="desc">For multi-location operators and groups needing API access.</p>
+        </div>
+        <div class="price"><span class="v">IDR 1,999k</span><span class="u">/mo</span></div>
+        <div class="cta"><a class="btn btn-outline" href="#start">Talk to us</a></div>
+        <ul>
+          <li>Everything in Pro</li>
+          <li>Unlimited staff &amp; locations</li>
+          <li>API + webhooks (POS)</li>
+          <li>Custom domain for booking page</li>
+          <li>NPS &amp; guest segmentation</li>
+          <li>Priority support · 99.5% SLA</li>
+        </ul>
+      </div>
+    </div>
+
+    <p class="price-foot">QRIS · GoPay · OVO · DANA · ShopeePay · BCA · Mandiri · BNI · BRI — via Midtrans / Xendit. Annual billing saves 20%. Data stays in Indonesia.</p>
+  </div>
+</section>
+
+
+<!-- ====================== FINAL CTA ====================== -->
+<section class="cta-band" id="start">
+  <div class="wrap">
+    <span class="eyebrow" style="color:#9BC1AB; background:transparent; padding:0;">Ready when you are</span>
+    <h2 style="margin-top:14px;">Your booking page,<br/>live by tomorrow morning.</h2>
+    <p>Sign up with your email — we&rsquo;ll have your booking page and a setup call ready within 24 hours. Free 14-day Pro trial. No credit card.</p>
+    <form class="form" onsubmit="event.preventDefault(); alert('Demo form');">
+      <input type="email" required placeholder="you@your-restaurant.id" />
+      <button type="submit">Start free trial</button>
+    </form>
+    <p class="fine">By signing up you agree to our terms &amp; privacy. Cancel anytime.</p>
+  </div>
+</section>
+
+
+<!-- ====================== FOOTER ====================== -->
+<footer class="foot">
+  <div class="wrap">
+    <div class="grid">
+      <div>
+        <div class="brand-line"><span class="mk">T</span><span>Tamu</span></div>
+        <p class="about">A modern reservation engine for restaurants and cafés in Indonesia and Southeast Asia.</p>
+      </div>
+      <div>
+        <h5>Product</h5>
+        <ul>
+          <li><a href="#product">Features</a></li>
+          <li><a href="#pricing">Pricing</a></li>
+          <li><a href="#friday">Live demo</a></li>
+          <li><a href="#">Embed widget</a></li>
+          <li><a href="#">Changelog</a></li>
+        </ul>
+      </div>
+      <div>
+        <h5>Resources</h5>
+        <ul>
+          <li><a href="#">Docs</a></li>
+          <li><a href="#">API reference</a></li>
+          <li><a href="#">Status</a></li>
+          <li><a href="#">Help center</a></li>
+        </ul>
+      </div>
+      <div>
+        <h5>Company</h5>
+        <ul>
+          <li><a href="#">About</a></li>
+          <li><a href="#">Customers</a></li>
+          <li><a href="#">Contact</a></li>
+          <li><a href="#">Terms</a></li>
+          <li><a href="#">Privacy</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="end">
+      <span>© 2026 PT Tamu Hospitality Indonesia · Jakarta &amp; Bali</span>
+      <div class="lang">
+        <button class="on">EN</button>
+        <button>ID</button>
+      </div>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
