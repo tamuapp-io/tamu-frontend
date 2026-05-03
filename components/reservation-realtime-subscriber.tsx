@@ -38,7 +38,7 @@ export function ReservationRealtimeSubscriber() {
   const token = useAuthStore((s) => s.token);
   const tenant = useAuthStore((s) => s.tenant);
   const hydrated = useAuthStore((s) => s.hydrated);
-  const echoRef = useRef<Echo | null>(null);
+  const echoRef = useRef<Echo<"reverb"> | null>(null);
 
   useEffect(() => {
     if (!hydrated || !token || !tenant?.id) {
