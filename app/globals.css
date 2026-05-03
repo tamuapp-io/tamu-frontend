@@ -1,26 +1,206 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+}
 
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #0f172a;
+
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+
+  --popover: #ffffff;
+  --popover-foreground: #0f172a;
+
+  --primary: #0f172a;
+  --primary-foreground: #f8fafc;
+
+  --secondary: #f1f5f9;
+  --secondary-foreground: #0f172a;
+
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+
+  --accent: #10b981;
+  --accent-foreground: #ffffff;
+
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+
+  --warning: #f59e0b;
+  --warning-foreground: #ffffff;
+
+  --info: #3b82f6;
+  --info-foreground: #ffffff;
+
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --ring: #0f172a;
+
+  /* Reservation status palette */
+  --status-pending: #f59e0b;
+  --status-pending-bg: #fef3c7;
+  --status-pending-text: #92400e;
+
+  --status-confirmed: #3b82f6;
+  --status-confirmed-bg: #dbeafe;
+  --status-confirmed-text: #1e40af;
+
+  --status-seated: #10b981;
+  --status-seated-bg: #d1fae5;
+  --status-seated-text: #065f46;
+
+  --status-completed: #64748b;
+  --status-completed-bg: #f1f5f9;
+  --status-completed-text: #334155;
+
+  --status-cancelled: #9ca3af;
+  --status-cancelled-bg: #f3f4f6;
+  --status-cancelled-text: #4b5563;
+
+  --status-noshow: #ef4444;
+  --status-noshow-bg: #fee2e2;
+  --status-noshow-text: #991b1b;
+
+  --status-waitlisted: #8b5cf6;
+  --status-waitlisted-bg: #ede9fe;
+  --status-waitlisted-text: #5b21b6;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+.dark {
+  --background: #020617;
+  --foreground: #f8fafc;
+
+  --card: #0b1220;
+  --card-foreground: #f8fafc;
+
+  --popover: #0b1220;
+  --popover-foreground: #f8fafc;
+
+  --primary: #f8fafc;
+  --primary-foreground: #0f172a;
+
+  --secondary: #1e293b;
+  --secondary-foreground: #f8fafc;
+
+  --muted: #1e293b;
+  --muted-foreground: #94a3b8;
+
+  --accent: #10b981;
+  --accent-foreground: #ffffff;
+
+  --destructive: #f87171;
+  --destructive-foreground: #0f172a;
+
+  --warning: #fbbf24;
+  --warning-foreground: #0f172a;
+
+  --info: #60a5fa;
+  --info-foreground: #0f172a;
+
+  --border: #1e293b;
+  --input: #334155;
+  --ring: #cbd5e1;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  html,
+  body {
+    height: 100%;
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-feature-settings: "cv11";
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Tabular numerals utility */
+  .num,
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .label-cap {
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--muted-foreground);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer utilities {
+  /* Reservation status pill helpers */
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 9999px;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1;
+  }
+  .pill .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 9999px;
+    flex-shrink: 0;
+  }
+
+  .pill.pending     { background: var(--status-pending-bg);    color: var(--status-pending-text); }
+  .pill.pending .dot{ background: var(--status-pending); }
+  .pill.confirmed   { background: var(--status-confirmed-bg);  color: var(--status-confirmed-text); }
+  .pill.confirmed .dot{ background: var(--status-confirmed); }
+  .pill.seated      { background: var(--status-seated-bg);     color: var(--status-seated-text); }
+  .pill.seated .dot { background: var(--status-seated); }
+  .pill.completed   { background: var(--status-completed-bg);  color: var(--status-completed-text); }
+  .pill.completed .dot{ background: var(--status-completed); }
+  .pill.cancelled   { background: var(--status-cancelled-bg);  color: var(--status-cancelled-text); }
+  .pill.cancelled .dot{ background: var(--status-cancelled); }
+  .pill.noshow      { background: var(--status-noshow-bg);     color: var(--status-noshow-text); }
+  .pill.noshow .dot { background: var(--status-noshow); }
+  .pill.waitlisted  { background: var(--status-waitlisted-bg); color: var(--status-waitlisted-text); }
+  .pill.waitlisted .dot{ background: var(--status-waitlisted); }
 }
