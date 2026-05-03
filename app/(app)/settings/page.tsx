@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "@/components/ui/toaster";
+import { VenueTimezonePicker } from "@/components/venue-timezone-picker";
 import { ApiError } from "@/lib/api/client";
 import { fetchSettings, patchSettings, syncOperatingHours } from "@/lib/api/settings";
 import { useUpdatePassword, useUpdateProfile } from "@/lib/hooks/use-auth";
@@ -98,17 +99,6 @@ function serializeHoursDraft(rows: HoursDraftRow[]) {
     })),
   };
 }
-
-const TZ_SUGGESTIONS = [
-  "Asia/Jakarta",
-  "Asia/Makassar",
-  "Asia/Jayapura",
-  "Asia/Singapore",
-  "UTC",
-  "Australia/Sydney",
-  "Europe/London",
-  "America/New_York",
-];
 
 type RestaurantDraft = {
   name: string;
@@ -224,7 +214,8 @@ export default function SettingsPage() {
   ) as { enabled?: boolean; auto_promote?: boolean };
 
   const slug = settings.data?.restaurant.slug;
-  const canSaveRestaurant = draft != null && draft.name.trim() !== "";
+  const canSaveRestaurant =
+    draft != null && draft.name.trim() !== "" && draft.timezone.trim() !== "";
   const canSaveAccount =
     accountName.trim() !== "" &&
     accountEmail.trim() !== "" &&
@@ -518,21 +509,16 @@ export default function SettingsPage() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="rs-tz">Timezone (IANA)</Label>
-                    <Input
-                      id="rs-tz"
-                      list="tz-presets-settings"
+                    <Label htmlFor="rs-tz">Venue timezone</Label>
+                    <VenueTimezonePicker
+                      triggerId="rs-tz"
+                      disabled={patch.isPending}
                       value={draft.timezone}
-                      onChange={(e) =>
-                        setDraft((d) => d && { ...d, timezone: e.target.value })
+                      onChange={(iana) =>
+                        setDraft((d) => d && { ...d, timezone: iana })
                       }
-                      placeholder="Asia/Jakarta"
+                      showSuggestFromBrowser
                     />
-                    <datalist id="tz-presets-settings">
-                      {TZ_SUGGESTIONS.map((tz) => (
-                        <option key={tz} value={tz} />
-                      ))}
-                    </datalist>
                   </div>
                   <div className="flex items-center justify-between gap-4 rounded-lg border border-border px-4 py-3">
                     <div>

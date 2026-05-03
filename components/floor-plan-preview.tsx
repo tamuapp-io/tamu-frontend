@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import type { Reservation, Table } from "@/lib/types";
 import { useUpdateTablePositions } from "@/lib/hooks/use-tables";
 import { toast } from "@/components/ui/toaster";
+import { instantFromApi } from "@/lib/format";
 import { Loader2 } from "lucide-react";
 
 interface FloorPlanPreviewProps {
@@ -114,7 +115,7 @@ function deriveState(
       return false;
     }
     if (r.status !== "confirmed" && r.status !== "pending") return false;
-    const start = new Date(r.reserved_at).getTime();
+    const start = instantFromApi(r.reserved_at).getTime();
     const diffMin = (start - now.getTime()) / 60_000;
     return diffMin >= 0 && diffMin <= 90;
   });

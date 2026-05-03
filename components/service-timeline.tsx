@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { cn } from "@/lib/utils";
 import type { Reservation, Table } from "@/lib/types";
-import { initials, statusClass, tenantZonedElapsedMinutes, formatTimeInTz } from "@/lib/format";
+import { initials, statusClass, tenantZonedElapsedMinutes, formatTimeInTz, instantFromApi } from "@/lib/format";
 
 interface ServiceTimelineProps {
   reservations: Reservation[];
@@ -55,7 +55,7 @@ export function ServiceTimeline({
         table: lane.table,
         items: lane.items.sort(
           (a, b) =>
-            new Date(a.reserved_at).getTime() - new Date(b.reserved_at).getTime(),
+            instantFromApi(a.reserved_at).getTime() - instantFromApi(b.reserved_at).getTime(),
         ),
       }))
       .sort((a, b) => {
@@ -170,7 +170,7 @@ export function ServiceTimeline({
             {/* Reservation bars */}
             {lanes.map((lane, laneIdx) =>
               lane.items.map((r) => {
-                const start = new Date(r.reserved_at);
+                const start = instantFromApi(r.reserved_at);
                 const left = offsetFor(start);
                 const width = widthFor(r.duration_mins);
                 return (

@@ -18,6 +18,7 @@ import { WalkinDialog } from "@/components/walkin-dialog";
 import { useReservationsList } from "@/lib/hooks/use-reservations";
 import { useTenantTimezone } from "@/lib/hooks/use-tenant-timezone";
 import { useUtcBootstrapDateRepair } from "@/lib/hooks/use-utc-bootstrap-date-repair";
+import { useVenueTimezoneFromMeta } from "@/lib/hooks/use-venue-timezone-from-meta";
 import {
   formatTimeInTz,
   initials,
@@ -64,6 +65,7 @@ export default function ReservationsPage() {
   const tenantTimezoneFromApi = data?.meta?.tenant_timezone?.trim();
   const displayTz = tenantTimezoneFromApi || storeTz || "UTC";
 
+  useVenueTimezoneFromMeta(tenantTimezoneFromApi);
   useUtcBootstrapDateRepair(tenantTimezoneFromApi ?? null, setDate);
 
   const reservations = data?.data ?? [];
