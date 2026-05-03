@@ -14,6 +14,7 @@ import { useReservationsList } from "@/lib/hooks/use-reservations";
 import { useTablesList } from "@/lib/hooks/use-tables";
 import { useTenantTimezone } from "@/lib/hooks/use-tenant-timezone";
 import { useUtcBootstrapDateRepair } from "@/lib/hooks/use-utc-bootstrap-date-repair";
+import { useVenueTimezoneFromMeta } from "@/lib/hooks/use-venue-timezone-from-meta";
 import {
   todayISOInTz,
   shiftCalendarDaysYmd,
@@ -22,6 +23,7 @@ import {
   statusClass,
   statusLabel,
   initials,
+  instantFromApi,
 } from "@/lib/format";
 import type { Reservation } from "@/lib/types";
 
@@ -37,6 +39,7 @@ export default function LivePage() {
   const tenantTimezoneFromApi = reservationsQuery.data?.meta?.tenant_timezone?.trim();
   const displayTz = tenantTimezoneFromApi || storeTz || "UTC";
 
+  useVenueTimezoneFromMeta(tenantTimezoneFromApi);
   useUtcBootstrapDateRepair(tenantTimezoneFromApi ?? null, setDate);
 
   const reservations = reservationsQuery.data?.data ?? [];
@@ -78,12 +81,13 @@ export default function LivePage() {
     return reservations
       .filter((r) => {
         if (r.status !== "confirmed" && r.status !== "pending") return false;
-        const start = new Date(r.reserved_at).getTime();
+        const start = instantFromApi(r.reserved_at).getTime();
         return start >= now && start <= cutoff;
       })
       .sort(
         (a, b) =>
-          new Date(a.reserved_at).getTime() - new Date(b.reserved_at).getTime(),
+          instantFromApi(a.reserved_at).getTime() -
+          instantFromApi(b.reserved_at).getTime(),
       )
       .slice(0, 5);
   }, [reservations]);

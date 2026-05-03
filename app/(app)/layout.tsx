@@ -6,6 +6,7 @@ import { useAuthStore } from "@/lib/store/auth-store";
 import { useCurrentUser } from "@/lib/hooks/use-auth";
 import { AppSidebar } from "@/components/app-sidebar";
 import { AppCommandPalette } from "@/components/app-command-palette";
+import { ReservationRealtimeSubscriber } from "@/components/reservation-realtime-subscriber";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -38,6 +39,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-svh bg-muted/30">
       <AppSidebar />
       <div className="flex min-w-0 flex-1 flex-col">{children}</div>
+      <ReservationRealtimeSubscriber />
       <AppCommandPalette />
     </div>
   );

@@ -3,6 +3,17 @@ import { getAuthToken, useAuthStore } from "@/lib/store/auth-store";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
 
+/** HTTP origin only (drops `/api/v1`) — used by WebSocket broadcast auth routes. */
+export function getBackendOrigin(): string {
+  try {
+    const base = API_URL.replace(/\/+$/, "");
+    const trimmed = base.replace(/\/?api\/v1\/?$/i, "");
+    return new URL(trimmed || base).origin;
+  } catch {
+    return "http://localhost:8000";
+  }
+}
+
 export class ApiError extends Error {
   status: number;
   errors?: Record<string, string[]>;

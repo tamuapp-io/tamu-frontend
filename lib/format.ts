@@ -1,5 +1,27 @@
+/**
+ * API instants should be UTC. If Laravel/Carbon emits a fractional datetime
+ * WITHOUT `Z` or `±hh:mm`, `new Date(...)` parses in the *browser's local*
+ * timezone and shifts timeline bars / walk-in clocks by ±offset (often −1 hr
+ * adjacent to CET/CEST for EU staff).
+ *
+ * Canonical forms we accept: trailing `Z`, `+00:00`, `-05:30`, `+0530`.
+ */
+export function instantFromApi(input: string | Date): Date {
+  if (typeof input !== "string") return input;
+  const s = input.trim();
+  if (!s) return new Date(Number.NaN);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return new Date(`${s}T12:00:00.000Z`);
+  const iso = s.includes("T") ? s : s.replace(/^(\d{4}-\d{2}-\d{2})\s+/, "$1T");
+  if (!/^\d{4}-\d{2}-\d{2}T/.test(iso)) return new Date(s);
+  if (/z$/i.test(iso)) return new Date(iso);
+  if (/[+-]\d{2}:\d{2}$/.test(iso)) return new Date(iso);
+  if (/[+-]\d{4}$/.test(iso)) return new Date(iso);
+  if (/[+-]\d{2}$/.test(iso)) return new Date(iso);
+  return new Date(`${iso}Z`);
+}
+
 function parseTemporalInput(input: string | Date): Date {
-  return typeof input === "string" ? new Date(input) : input;
+  return instantFromApi(input);
 }
 
 export function formatDate(input: string | Date, opts?: Intl.DateTimeFormatOptions) {
@@ -30,7 +52,7 @@ export function formatTimeInTz(input: string | Date, timeZone: string): string {
   return new Intl.DateTimeFormat("en-GB", {
     hour: "2-digit",
     minute: "2-digit",
-    hourCycle: "h23",
+    hour12: false,
     timeZone,
   }).format(date);
 }
@@ -101,24 +123,30 @@ export function shiftCalendarDaysYmd(
   }).format(new Date(nextUtc));
 }
 
+/** Wall-clock minutes since local midnight (`timeZone`). `sv-SE` + explicit 24h avoids `formatToParts` quirks with some `en-*` locales. */
+function tenantZonedMinutesSinceMidnight(instant: Date, timeZone: string): number {
+  const dtf = new Intl.DateTimeFormat("sv-SE", {
+    timeZone,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  const label = dtf.format(instant);
+  const hm = /^(\d{1,2}):(\d{2})$/.exec(label);
+  if (hm) return Number.parseInt(hm[1], 10) * 60 + Number.parseInt(hm[2], 10);
+  const parts = dtf.formatToParts(instant);
+  const n = (t: Intl.DateTimeFormatPartTypes) =>
+    Number(parts.find((p) => p.type === t)?.value ?? 0);
+  return n("hour") * 60 + n("minute");
+}
+
 /** Tenant-local elapsed minutes since `startHour:00` (for timeline stripes). */
 export function tenantZonedElapsedMinutes(
   instant: Date,
   timeZone: string,
   startHour: number,
 ): number {
-  const formatter = new Intl.DateTimeFormat("en-GB", {
-    timeZone,
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-  });
-  const parts = formatter.formatToParts(instant);
-  const n = (t: Intl.DateTimeFormatPartTypes) =>
-    Number(parts.find((p) => p.type === t)?.value ?? 0);
-  const hour = n("hour");
-  const minute = n("minute");
-  return hour * 60 + minute - startHour * 60;
+  return tenantZonedMinutesSinceMidnight(instant, timeZone) - startHour * 60;
 }
 
 export function initials(name?: string | null) {

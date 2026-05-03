@@ -6,6 +6,8 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { VenueTimezonePicker } from "@/components/venue-timezone-picker";
+import { getBrowserSuggestedTimezone } from "@/lib/venue-timezones";
 import { useRegister } from "@/lib/hooks/use-auth";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { ApiError } from "@/lib/api/client";
@@ -23,6 +25,12 @@ export default function RegisterPage() {
     password: "",
     restaurant_name: "",
   });
+  const [timezone, setTimezone] = useState("");
+
+  useEffect(() => {
+    const z = getBrowserSuggestedTimezone();
+    setTimezone(z ?? "Asia/Jakarta");
+  }, []);
 
   useEffect(() => {
     if (hydrated && token) router.replace("/live");
@@ -47,6 +55,7 @@ export default function RegisterPage() {
         email: form.email.trim(),
         password: form.password,
         restaurant_name: form.restaurant_name.trim(),
+        timezone: timezone.trim(),
       });
       toast.success("Restaurant ready", "We've created your tenant — let's get set up.");
       router.replace("/live");
@@ -79,6 +88,20 @@ export default function RegisterPage() {
             <p className="text-xs text-destructive">
               {fieldErrors.restaurant_name[0]}
             </p>
+          )}
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="reg-tz">Venue timezone</Label>
+          <VenueTimezonePicker
+            triggerId="reg-tz"
+            disabled={register.isPending}
+            value={timezone}
+            onChange={setTimezone}
+            showSuggestFromBrowser
+          />
+          {fieldErrors.timezone?.[0] && (
+            <p className="text-xs text-destructive">{fieldErrors.timezone[0]}</p>
           )}
         </div>
 
@@ -144,7 +167,7 @@ export default function RegisterPage() {
           type="submit"
           className="w-full"
           size="lg"
-          disabled={register.isPending}
+          disabled={register.isPending || !timezone.trim()}
         >
           {register.isPending ? "Creating account…" : "Create account"}
         </Button>
