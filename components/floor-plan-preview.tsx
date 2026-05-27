@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { cn } from "@/lib/utils";
 import type { Reservation, Table } from "@/lib/types";
 import { useUpdateTablePositions } from "@/lib/hooks/use-tables";
@@ -183,30 +183,31 @@ export function FloorPlanPreview({
     });
   }, [interactive, stackFingerprint, isSaving, tables, persistPositions]);
 
-  const [dragDelta, setDragDelta] = useState<{ id: string; dx: number; dy: number } | null>(
-    null,
-  );
-  const dragCtx = useRef<{
+  // Drag is animated imperatively (DOM transform mutation, rAF-throttled) so
+  // pointermove doesn't trigger React re-renders. With even ~20 tables on the
+  // canvas, going through React state on every move was rendering all buttons
+  // at 60–120Hz and pegging the main thread. The trade-off: the canvas
+  // dimensions don't reflow during drag, so we imperatively grow the inner
+  // div in the same rAF callback if the dragged table extends past it.
+  const dragRef = useRef<{
     id: string;
+    el: HTMLButtonElement;
+    baseX: number;
+    baseY: number;
+    width: number;
+    height: number;
+    rotation: number;
     startCx: number;
     startCy: number;
+    lastDx: number;
+    lastDy: number;
     moved: boolean;
+    frame: number | null;
   } | null>(null);
 
-  const mergedCells = useMemo(() => {
-    if (!dragDelta) return layoutCells;
-    return layoutCells.map((c) =>
-      c.table.id === dragDelta.id
-        ? {
-            ...c,
-            x: Math.max(0, c.x + dragDelta.dx),
-            y: Math.max(0, c.y + dragDelta.dy),
-          }
-        : c,
-    );
-  }, [layoutCells, dragDelta]);
+  const innerRef = useRef<HTMLDivElement | null>(null);
 
-  const dims = useMemo(() => canvasSize(mergedCells), [mergedCells]);
+  const dims = useMemo(() => canvasSize(layoutCells), [layoutCells]);
 
   if (tables.length === 0) {
     return (
@@ -227,73 +228,132 @@ export function FloorPlanPreview({
     );
   }
 
-  const endDrag = (e: PointerEvent | React.PointerEvent) => {
-    const ctx = dragCtx.current;
-    dragCtx.current = null;
-    if (!interactive || !ctx) {
-      setDragDelta(null);
-      return;
+  const applyDragFrame = () => {
+    const ctx = dragRef.current;
+    if (!ctx) return;
+    ctx.frame = null;
+
+    const newX = Math.max(0, ctx.baseX + ctx.lastDx);
+    const newY = Math.max(0, ctx.baseY + ctx.lastDy);
+    ctx.el.style.transform = `translate(${newX}px, ${newY}px) rotate(${ctx.rotation}deg)`;
+
+    // Grow the canvas if needed so the dragged table stays visible inside
+    // the overflow-auto wrapper instead of being clipped.
+    const inner = innerRef.current;
+    if (inner) {
+      const minW = newX + ctx.width + CANVAS_PAD;
+      const minH = newY + ctx.height + CANVAS_PAD;
+      const curW = inner.offsetWidth;
+      const curH = inner.offsetHeight;
+      if (minW > curW) inner.style.width = `${minW}px`;
+      if (minH > curH) inner.style.height = `${minH}px`;
     }
-
-    const dx = e.clientX - ctx.startCx;
-    const dy = e.clientY - ctx.startCy;
-    setDragDelta(null);
-
-    if (!ctx.moved) {
-      const t = tables.find((x) => x.id === ctx.id);
-      if (t) onTableClick?.(t);
-      return;
-    }
-
-    const baseCells = layoutCells;
-    const nextCells = baseCells.map((c) =>
-      c.table.id === ctx.id
-        ? { ...c, x: Math.max(0, c.x + dx), y: Math.max(0, c.y + dy) }
-        : c,
-    );
-
-    persistPositions(cellsToPayload(nextCells), {
-      onError: (err: unknown) => {
-        const msg = err instanceof Error ? err.message : "Try again.";
-        toast.error("Could not save position", msg);
-      },
-    });
   };
 
-  const onTablePointerDown = (e: React.PointerEvent, id: string) => {
+  const onTablePointerDown = (e: React.PointerEvent<HTMLButtonElement>, id: string) => {
     if (!interactive || e.button !== 0) return;
+    const cell = layoutCells.find((c) => c.table.id === id);
+    if (!cell) return;
+    if (!tableIsDraggable(cell.table)) return;
 
-    const el = e.currentTarget as HTMLElement;
+    const el = e.currentTarget;
     el.setPointerCapture(e.pointerId);
 
-    dragCtx.current = {
+    dragRef.current = {
       id,
+      el,
+      baseX: cell.x,
+      baseY: cell.y,
+      width: cell.w,
+      height: cell.h,
+      rotation: cell.rotation,
       startCx: e.clientX,
       startCy: e.clientY,
+      lastDx: 0,
+      lastDy: 0,
       moved: false,
+      frame: null,
     };
-    setDragDelta({ id, dx: 0, dy: 0 });
+
+    // Visual hints applied directly to bypass React's render cycle.
+    el.style.zIndex = "10";
+    el.style.willChange = "transform";
+    el.style.cursor = "grabbing";
+    el.style.boxShadow = "0 12px 28px -8px rgba(0,0,0,0.25)";
 
     const move = (ev: PointerEvent) => {
-      if (!dragCtx.current || dragCtx.current.id !== id) return;
-      const dx = ev.clientX - dragCtx.current.startCx;
-      const dy = ev.clientY - dragCtx.current.startCy;
-      if (Math.abs(dx) > DRAG_THRESHOLD_PX || Math.abs(dy) > DRAG_THRESHOLD_PX) {
-        dragCtx.current.moved = true;
+      const ctx = dragRef.current;
+      if (!ctx) return;
+      const dx = ev.clientX - ctx.startCx;
+      const dy = ev.clientY - ctx.startCy;
+      if (!ctx.moved && (Math.abs(dx) > DRAG_THRESHOLD_PX || Math.abs(dy) > DRAG_THRESHOLD_PX)) {
+        ctx.moved = true;
       }
-      setDragDelta({ id, dx, dy });
+      ctx.lastDx = dx;
+      ctx.lastDy = dy;
+      if (ctx.frame == null) {
+        ctx.frame = requestAnimationFrame(applyDragFrame);
+      }
     };
 
-    const up = (ev: PointerEvent) => {
+    const cleanup = () => {
       document.removeEventListener("pointermove", move);
       document.removeEventListener("pointerup", up);
       document.removeEventListener("pointercancel", up);
+    };
+
+    const up = (ev: PointerEvent) => {
+      cleanup();
+
+      const ctx = dragRef.current;
+      dragRef.current = null;
+      if (!ctx) return;
+
+      if (ctx.frame != null) {
+        cancelAnimationFrame(ctx.frame);
+        ctx.frame = null;
+      }
+
+      // Strip visual hints
+      ctx.el.style.zIndex = "";
+      ctx.el.style.willChange = "";
+      ctx.el.style.cursor = "";
+      ctx.el.style.boxShadow = "";
+
       try {
-        el.releasePointerCapture(ev.pointerId);
+        ctx.el.releasePointerCapture(ev.pointerId);
       } catch {
         /* capture may already be cleared */
       }
-      endDrag(ev);
+
+      if (!ctx.moved) {
+        const t = tables.find((x) => x.id === ctx.id);
+        if (t) onTableClick?.(t);
+        return;
+      }
+
+      const newX = Math.max(0, ctx.baseX + ctx.lastDx);
+      const newY = Math.max(0, ctx.baseY + ctx.lastDy);
+
+      const nextCells = layoutCells.map((c) =>
+        c.table.id === ctx.id ? { ...c, x: newX, y: newY } : c,
+      );
+
+      // The mutation is configured with an optimistic update (see
+      // useUpdateTablePositions) so the React Query cache reflects the new
+      // position immediately. That means when React re-renders after this
+      // call, the table's `style.transform` from JSX will match what we
+      // imperatively set — no snap-back flicker.
+      persistPositions(cellsToPayload(nextCells), {
+        onError: (err: unknown) => {
+          // Roll the visual back to the pre-drag position if the server
+          // rejects; the cache rollback in onError of the mutation handles
+          // the React-side state.
+          ctx.el.style.transform = `translate(${ctx.baseX}px, ${ctx.baseY}px) rotate(${ctx.rotation}deg)`;
+          const msg = err instanceof Error ? err.message : "Try again.";
+          toast.error("Could not save position", msg);
+        },
+      });
     };
 
     document.addEventListener("pointermove", move);
@@ -332,7 +392,11 @@ export function FloorPlanPreview({
         )}
         style={{ maxHeight: interactive ? "min(70vh, 640px)" : "min(55vh, 520px)" }}
       >
-        <div className="relative" style={{ width: dims.width, height: dims.height }}>
+        <div
+          ref={innerRef}
+          className="relative"
+          style={{ width: dims.width, height: dims.height }}
+        >
           {/* subtle grid */}
           <div
             className="pointer-events-none absolute inset-0 opacity-[0.07]"
@@ -344,7 +408,7 @@ export function FloorPlanPreview({
               backgroundSize: "24px 24px",
             }}
           />
-          {mergedCells.map((cell) => {
+          {layoutCells.map((cell) => {
             const state = deriveState(cell.table, reservations, now);
             const draggable = interactive && tableIsDraggable(cell.table);
             return (
@@ -366,11 +430,12 @@ export function FloorPlanPreview({
                     : () => onTableClick?.(cell.table)
                 }
                 aria-label={`${cell.table.name} · ${state}`}
-                aria-grabbed={interactive && dragDelta?.id === cell.table.id ? true : undefined}
                 className={cn(
-                  "absolute flex select-none flex-col items-center justify-center gap-0.5 border-2 px-1 text-center text-foreground transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  "absolute flex select-none flex-col items-center justify-center gap-0.5 border-2 px-1 text-center text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  // Drop the transition entirely while interactive — transform changes
+                  // would otherwise animate the drag, fighting the rAF updates.
+                  !interactive && "transition-shadow",
                   draggable && "touch-none cursor-grab active:cursor-grabbing",
-                  interactive && dragDelta?.id === cell.table.id && "z-10 shadow-lg",
                   cell.table.shape === "round" ? "rounded-full" : "rounded-lg",
                   interactive && !tableIsDraggable(cell.table) && "cursor-default opacity-70",
                   stateBg(state),

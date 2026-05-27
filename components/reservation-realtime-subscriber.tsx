@@ -4,6 +4,9 @@ import { useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import Echo from "laravel-echo";
 import Pusher from "pusher-js";
+
+/** laravel-echo v2 declares `Echo<T extends keyof Broadcaster>` — plain `Echo` needs a broadcaster arg at type level */
+type StaffReverbEcho = Echo<"reverb">;
 import { getBackendOrigin } from "@/lib/api/client";
 import { toast } from "@/components/ui/toaster";
 import { reservationsKeys } from "@/lib/hooks/use-reservations";
@@ -38,7 +41,7 @@ export function ReservationRealtimeSubscriber() {
   const token = useAuthStore((s) => s.token);
   const tenant = useAuthStore((s) => s.tenant);
   const hydrated = useAuthStore((s) => s.hydrated);
-  const echoRef = useRef<Echo<"reverb"> | null>(null);
+  const echoRef = useRef<StaffReverbEcho | null>(null);
 
   useEffect(() => {
     if (!hydrated || !token || !tenant?.id) {

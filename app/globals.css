@@ -38,104 +38,116 @@
 }
 
 :root {
-  --background: #ffffff;
-  --foreground: #0f172a;
+  /*
+   * Tamu warm-hospitality palette.
+   *
+   * Inspired by the dining-room reference: cream paper background, deep
+   * espresso primaries, warm tan accents for occupied/seated states, and
+   * terracotta to signal attention/no-show. Statuses keep semantic
+   * distinctness but all sit inside the warm family so the dashboard reads
+   * like a well-styled menu rather than a flat slate UI.
+   */
+
+  --background: #f4ecde;
+  --foreground: #2b1c12;
 
   --card: #ffffff;
-  --card-foreground: #0f172a;
+  --card-foreground: #2b1c12;
 
   --popover: #ffffff;
-  --popover-foreground: #0f172a;
+  --popover-foreground: #2b1c12;
 
-  --primary: #0f172a;
-  --primary-foreground: #f8fafc;
+  --primary: #1f1611;
+  --primary-foreground: #f5ebdc;
 
-  --secondary: #f1f5f9;
-  --secondary-foreground: #0f172a;
+  --secondary: #ebe0cb;
+  --secondary-foreground: #2b1c12;
 
-  --muted: #f1f5f9;
-  --muted-foreground: #64748b;
+  --muted: #ebe0cb;
+  --muted-foreground: #8a6f58;
 
-  --accent: #10b981;
-  --accent-foreground: #ffffff;
+  --accent: #d6b98a;
+  --accent-foreground: #2b1c12;
 
-  --destructive: #ef4444;
-  --destructive-foreground: #ffffff;
+  --destructive: #b25d40;
+  --destructive-foreground: #f5ebdc;
 
-  --warning: #f59e0b;
+  --warning: #c99358;
   --warning-foreground: #ffffff;
 
-  --info: #3b82f6;
+  --info: #8a6f58;
   --info-foreground: #ffffff;
 
-  --border: #e2e8f0;
-  --input: #e2e8f0;
-  --ring: #0f172a;
+  --border: #e0d2b6;
+  --input: #e0d2b6;
+  --ring: #6f4e37;
 
-  /* Reservation status palette */
-  --status-pending: #f59e0b;
-  --status-pending-bg: #fef3c7;
-  --status-pending-text: #92400e;
+  /* Reservation status palette — warm-toned but still semantically distinct. */
+  --status-pending: #c99358;
+  --status-pending-bg: #f3e2c2;
+  --status-pending-text: #6e4a1a;
 
-  --status-confirmed: #3b82f6;
-  --status-confirmed-bg: #dbeafe;
-  --status-confirmed-text: #1e40af;
+  --status-confirmed: #b58b5c;
+  --status-confirmed-bg: #ecd9b6;
+  --status-confirmed-text: #4a2f12;
 
-  --status-seated: #10b981;
-  --status-seated-bg: #d1fae5;
-  --status-seated-text: #065f46;
+  --status-seated: #c2935e;
+  --status-seated-bg: #e5c99a;
+  --status-seated-text: #3a2418;
 
-  --status-completed: #64748b;
-  --status-completed-bg: #f1f5f9;
-  --status-completed-text: #334155;
+  --status-completed: #8a6f58;
+  --status-completed-bg: #e8ddc9;
+  --status-completed-text: #4a3829;
 
-  --status-cancelled: #9ca3af;
-  --status-cancelled-bg: #f3f4f6;
-  --status-cancelled-text: #4b5563;
+  --status-cancelled: #b0a091;
+  --status-cancelled-bg: #ece3d5;
+  --status-cancelled-text: #6e5a48;
 
-  --status-noshow: #ef4444;
-  --status-noshow-bg: #fee2e2;
-  --status-noshow-text: #991b1b;
+  --status-noshow: #b25d40;
+  --status-noshow-bg: #f0d4c5;
+  --status-noshow-text: #6e2f1a;
 
-  --status-waitlisted: #8b5cf6;
-  --status-waitlisted-bg: #ede9fe;
-  --status-waitlisted-text: #5b21b6;
+  --status-waitlisted: #a87d52;
+  --status-waitlisted-bg: #ecddc0;
+  --status-waitlisted-text: #4a2f12;
 }
 
 .dark {
-  --background: #020617;
-  --foreground: #f8fafc;
+  /* Dark coffee variant — same warm family, inverted. */
 
-  --card: #0b1220;
-  --card-foreground: #f8fafc;
+  --background: #1a100b;
+  --foreground: #f5ebdc;
 
-  --popover: #0b1220;
-  --popover-foreground: #f8fafc;
+  --card: #241612;
+  --card-foreground: #f5ebdc;
 
-  --primary: #f8fafc;
-  --primary-foreground: #0f172a;
+  --popover: #241612;
+  --popover-foreground: #f5ebdc;
 
-  --secondary: #1e293b;
-  --secondary-foreground: #f8fafc;
+  --primary: #f5ebdc;
+  --primary-foreground: #1f1611;
 
-  --muted: #1e293b;
-  --muted-foreground: #94a3b8;
+  --secondary: #2e1d16;
+  --secondary-foreground: #f5ebdc;
 
-  --accent: #10b981;
-  --accent-foreground: #ffffff;
+  --muted: #2e1d16;
+  --muted-foreground: #a89380;
 
-  --destructive: #f87171;
-  --destructive-foreground: #0f172a;
+  --accent: #c29b6f;
+  --accent-foreground: #1f1611;
 
-  --warning: #fbbf24;
-  --warning-foreground: #0f172a;
+  --destructive: #d17c5c;
+  --destructive-foreground: #1f1611;
 
-  --info: #60a5fa;
-  --info-foreground: #0f172a;
+  --warning: #e6b26b;
+  --warning-foreground: #1f1611;
 
-  --border: #1e293b;
-  --input: #334155;
-  --ring: #cbd5e1;
+  --info: #a89380;
+  --info-foreground: #1f1611;
+
+  --border: #3a251d;
+  --input: #4a3329;
+  --ring: #c29b6f;
 }
 
 @layer base {

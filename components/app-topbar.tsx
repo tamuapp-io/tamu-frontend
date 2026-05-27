@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { LogOut, Plus, User } from "lucide-react";
+import { LogOut, Menu, Plus, User, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -13,7 +13,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useLogout } from "@/lib/hooks/use-auth";
 import { useAuthStore } from "@/lib/store/auth-store";
+import { useMobileSidebarStore } from "@/lib/store/mobile-sidebar-store";
 import { initials } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
 interface AppTopbarProps {
   breadcrumbs: Array<{ label: string; current?: boolean }>;
@@ -26,6 +28,8 @@ interface AppTopbarProps {
 
 export function AppTopbar({ breadcrumbs, primaryAction }: AppTopbarProps) {
   const user = useAuthStore((s) => s.user);
+  const mobileSidebarOpen = useMobileSidebarStore((s) => s.open);
+  const toggleMobileSidebar = useMobileSidebarStore((s) => s.toggle);
   const logout = useLogout();
   const router = useRouter();
 
@@ -35,8 +39,30 @@ export function AppTopbar({ breadcrumbs, primaryAction }: AppTopbarProps) {
   };
 
   return (
-    <header className="flex h-14 items-center gap-3 border-b border-border bg-card px-6">
-      <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-sm">
+    <header className="flex h-14 items-center gap-2 border-b border-border bg-background px-4 sm:gap-3 sm:px-6">
+      <Button
+        type="button"
+        variant="outline"
+        size="icon"
+        className={cn(
+          "shrink-0 transition-[box-shadow,background-color] lg:hidden",
+          mobileSidebarOpen && "border-foreground/20 bg-muted",
+        )}
+        aria-label={mobileSidebarOpen ? "Close navigation menu" : "Open navigation menu"}
+        aria-expanded={mobileSidebarOpen}
+        aria-controls="mobile-app-sidebar"
+        onClick={() => toggleMobileSidebar()}
+      >
+        {mobileSidebarOpen ? (
+          <X className="h-5 w-5" aria-hidden />
+        ) : (
+          <Menu className="h-5 w-5" aria-hidden />
+        )}
+      </Button>
+      <nav
+        aria-label="Breadcrumb"
+        className="flex min-w-0 flex-1 items-center gap-2 truncate text-sm"
+      >
         {breadcrumbs.map((crumb, i) => (
           <span key={crumb.label} className="flex items-center gap-2">
             {i > 0 && <span className="text-muted-foreground">/</span>}

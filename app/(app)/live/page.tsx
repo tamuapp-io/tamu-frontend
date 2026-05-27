@@ -207,8 +207,8 @@ export default function LivePage() {
           </div>
         </Card>
 
-        {/* Timeline + Floor plan split */}
-        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[3fr_2fr]">
+        {/* Timeline and floor plan — each on its own row */}
+        <div className="flex flex-col gap-6">
           <ServiceTimeline
             reservations={reservations}
             tables={tables}

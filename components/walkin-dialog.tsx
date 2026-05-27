@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Plus, Minus, UserPlus } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Plus, Minus, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -20,13 +20,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { TableFloorPicker } from "@/components/table-floor-picker";
 import { useCreateReservation } from "@/lib/hooks/use-reservations";
-import { useTablesList } from "@/lib/hooks/use-tables";
 import { useTenantTimezone } from "@/lib/hooks/use-tenant-timezone";
 import { ApiError } from "@/lib/api/client";
 import { formatDateInTz, formatTimeInTz } from "@/lib/format";
 import { toast } from "@/components/ui/toaster";
-import type { Reservation, Table } from "@/lib/types";
+import type { Reservation } from "@/lib/types";
 
 interface WalkinDialogProps {
   open: boolean;
@@ -39,21 +39,22 @@ export function WalkinDialog({ open, onOpenChange, timeZone: timeZoneProp }: Wal
   const fallbackTz = useTenantTimezone();
   const tz = (timeZoneProp?.trim() || fallbackTz || "UTC").trim();
   const create = useCreateReservation();
-  const { data: tables = [] } = useTablesList({ status: "active" });
 
   const [partySize, setPartySize] = useState(2);
-  const [tableId, setTableId] = useState<string | undefined>();
+  const [tableId, setTableId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [requests, setRequests] = useState("");
   const [duration, setDuration] = useState(90);
 
-  const eligible = tables.filter(
-    (t: Table) =>
-      t.status === "active" &&
-      t.min_capacity <= partySize &&
-      t.max_capacity >= partySize,
-  );
+  // Stable ISO instant per-open so the picker doesn't refetch every render.
+  // We pin it when the dialog opens; if a walk-in lingers for > a few minutes
+  // the picker's conflict math is still close enough and the backend lock
+  // will reject any real overlap on save.
+  const reservedAtIso = useMemo(() => {
+    void open; // capture dependency
+    return new Date().toISOString();
+  }, [open]);
 
   const fieldErrors =
     (create.error instanceof ApiError && create.error.errors) || {};
@@ -64,7 +65,7 @@ export function WalkinDialog({ open, onOpenChange, timeZone: timeZoneProp }: Wal
 
   function reset() {
     setPartySize(2);
-    setTableId(undefined);
+    setTableId(null);
     setName("");
     setPhone("");
     setRequests("");
@@ -76,7 +77,7 @@ export function WalkinDialog({ open, onOpenChange, timeZone: timeZoneProp }: Wal
     e.preventDefault();
     try {
       const r: Reservation = await create.mutateAsync({
-        reserved_at: new Date().toISOString(),
+        reserved_at: reservedAtIso,
         party_size: partySize,
         duration_mins: duration,
         guest: {
@@ -85,7 +86,7 @@ export function WalkinDialog({ open, onOpenChange, timeZone: timeZoneProp }: Wal
         },
         special_requests: requests.trim() || undefined,
         source: "walkin",
-        table_id: tableId,
+        table_id: tableId ?? undefined,
       });
       toast.success(
         "Walked in",
@@ -106,7 +107,7 @@ export function WalkinDialog({ open, onOpenChange, timeZone: timeZoneProp }: Wal
         onOpenChange(o);
       }}
     >
-      <DialogContent>
+      <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle>Seat a walk-in</DialogTitle>
           <DialogDescription className="space-y-1">
@@ -169,34 +170,27 @@ export function WalkinDialog({ open, onOpenChange, timeZone: timeZoneProp }: Wal
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <Label>Suggested table</Label>
-            <Select
-              value={tableId ?? "auto"}
-              onValueChange={(v) => setTableId(v === "auto" ? undefined : v)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Auto-assign" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="auto">
-                  <span className="flex items-center gap-2">
-                    <UserPlus className="h-4 w-4" /> Let Tamu pick the best one
-                  </span>
-                </SelectItem>
-                {eligible.length === 0 ? (
-                  <SelectItem value="__none" disabled>
-                    No tables fit a party of {partySize}
-                  </SelectItem>
-                ) : (
-                  eligible.map((t: Table) => (
-                    <SelectItem key={t.id} value={t.id}>
-                      {t.name} · {t.section} · {t.min_capacity}–{t.max_capacity} ppl
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <Label className="text-sm font-medium">Pick a table</Label>
+              <Button
+                type="button"
+                variant={tableId === null ? "accent" : "outline"}
+                size="sm"
+                className="h-8"
+                onClick={() => setTableId(null)}
+              >
+                <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                {tableId === null ? "Auto-assigning" : "Auto-assign instead"}
+              </Button>
+            </div>
+            <TableFloorPicker
+              reservedAt={reservedAtIso}
+              durationMins={duration}
+              partySize={partySize}
+              value={tableId}
+              onChange={setTableId}
+            />
             {fieldErrors.table_id?.[0] && (
               <p className="text-xs text-destructive">{fieldErrors.table_id[0]}</p>
             )}
