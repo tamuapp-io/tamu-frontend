@@ -264,7 +264,7 @@ function BookingsTrendChart({ data }: { data: ReportDailyRow[] }) {
             fontSize: 12,
           }}
           labelStyle={{ color: "var(--foreground)", fontWeight: 600 }}
-          formatter={(value: number, name: string) => [value, statusLabel(name)]}
+          formatter={(value, name) => [value, statusLabel(String(name))]}
         />
         <Legend
           wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
@@ -310,7 +310,7 @@ function StatusDonut({ byStatus }: { byStatus: Record<string, number> }) {
             borderRadius: 8,
             fontSize: 12,
           }}
-          formatter={(value: number, _name, item) => [
+          formatter={(value, _name, item) => [
             value,
             statusLabel(String(item.payload.status)),
           ]}
@@ -384,7 +384,7 @@ function PartySizeChart({
             borderRadius: 8,
             fontSize: 12,
           }}
-          formatter={(value: number) => [value, "Reservations"]}
+          formatter={(value) => [value, "Reservations"]}
           labelFormatter={(label) => `Party of ${label}`}
         />
         <Bar
