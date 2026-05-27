@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { ExternalLink, Plus, Trash2 } from "lucide-react";
+import { Clock, ExternalLink, Plus, Trash2 } from "lucide-react";
 import { AppTopbar } from "@/components/app-topbar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -196,15 +196,57 @@ export default function SettingsPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["tenant-settings"] }),
   });
 
+  // Captured at submit time so onSuccess can compare and invalidate
+  // tz-dependent caches only when the venue timezone actually changed.
+  const pendingTzRef = useRef<string | null>(null);
+
   const patch = useMutation({
     mutationFn: patchSettings,
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ["tenant-settings"] });
+
+      const prevTz = pendingTzRef.current;
+      const nextTz = res.data.restaurant.timezone;
+      pendingTzRef.current = null;
+
       mergeTenant({
         name: res.data.restaurant.name,
-        timezone: res.data.restaurant.timezone,
+        timezone: nextTz,
         is_published: res.data.restaurant.is_published,
       });
+
+      // When the venue timezone changes, every list view that derives day
+      // windows or labels from it must refetch. Otherwise cached responses
+      // keep their old `meta.tenant_timezone`, and `useVenueTimezoneFromMeta`
+      // would silently revert the auth-store back to the previous zone.
+      if (prevTz && nextTz && prevTz !== nextTz) {
+        for (const key of [
+          "reservations",
+          "live",
+          "walk-ins",
+          "staff-waitlist",
+          "reports",
+        ]) {
+          qc.invalidateQueries({ queryKey: [key], exact: false });
+        }
+        toast.success(
+          "Timezone updated",
+          `Reservations and reports now display in ${nextTz}.`,
+        );
+      } else {
+        toast.success("Profile saved");
+      }
+    },
+    onError: (err) => {
+      pendingTzRef.current = null;
+      const flat =
+        err instanceof ApiError && err.errors
+          ? Object.values(err.errors).flat()[0]
+          : undefined;
+      toast.error(
+        "Could not save profile",
+        flat ?? (err instanceof Error ? err.message : undefined),
+      );
     },
   });
 
@@ -280,6 +322,7 @@ export default function SettingsPage() {
     if (!draft) {
       return;
     }
+    pendingTzRef.current = settings.data?.restaurant.timezone ?? null;
     patch.mutate({
       restaurant: {
         name: draft.name.trim(),
@@ -329,13 +372,13 @@ export default function SettingsPage() {
         )}
 
         {settings.data && draft && hoursDraft && (
-          <Tabs defaultValue="general" className="w-full">
+          <Tabs defaultValue="profile" className="w-full">
             <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1.5 p-1.5 sm:gap-1">
+              <TabsTrigger value="profile" className="shrink-0 px-3">
+                Profile
+              </TabsTrigger>
               <TabsTrigger value="account" className="shrink-0 px-3">
                 Account
-              </TabsTrigger>
-              <TabsTrigger value="general" className="shrink-0 px-3">
-                General
               </TabsTrigger>
               <TabsTrigger value="hours" className="shrink-0 px-3">
                 Hours &amp; slots
@@ -470,12 +513,13 @@ export default function SettingsPage() {
               </Card>
             </TabsContent>
 
-            <TabsContent value="general" className="mt-6 space-y-6 focus-visible:outline-none">
+            <TabsContent value="profile" className="mt-6 space-y-6 focus-visible:outline-none">
             <Card className="overflow-hidden shadow-xs">
               <div className="border-b border-border bg-muted/30 px-6 py-4">
-                <h2 className="text-sm font-semibold">Venue basics</h2>
+                <h2 className="text-sm font-semibold">Restaurant identity</h2>
                 <p className="text-xs text-muted-foreground">
-                  Name, timezone, and whether guests can reach your live booking page.
+                  Name and venue timezone — the timezone drives how reservations,
+                  walk-ins, and reports are bucketed and displayed across the app.
                 </p>
               </div>
               <div className="space-y-4 p-6">
@@ -508,8 +552,11 @@ export default function SettingsPage() {
                       placeholder="Restaurant name"
                     />
                   </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="rs-tz">Venue timezone</Label>
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label htmlFor="rs-tz" className="flex items-center gap-1.5">
+                      <Clock className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
+                      Venue timezone
+                    </Label>
                     <VenueTimezonePicker
                       triggerId="rs-tz"
                       disabled={patch.isPending}
@@ -519,8 +566,19 @@ export default function SettingsPage() {
                       }
                       showSuggestFromBrowser
                     />
+                    <p className="text-[11px] text-muted-foreground">
+                      Reservation times, walk-in clocks, and report windows are
+                      shown in this zone.{" "}
+                      {draft.timezone &&
+                      draft.timezone !== (settings.data?.restaurant.timezone ?? "") ? (
+                        <span className="font-medium text-foreground">
+                          Unsaved change — current saved zone is{" "}
+                          {settings.data?.restaurant.timezone || "UTC"}.
+                        </span>
+                      ) : null}
+                    </p>
                   </div>
-                  <div className="flex items-center justify-between gap-4 rounded-lg border border-border px-4 py-3">
+                  <div className="flex items-center justify-between gap-4 rounded-lg border border-border px-4 py-3 sm:col-span-2">
                     <div>
                       <Label className="text-sm font-medium">Publishing</Label>
                       <p className="text-[11px] text-muted-foreground">

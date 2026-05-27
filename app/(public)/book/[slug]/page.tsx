@@ -13,7 +13,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { publicBookingApi } from "@/lib/api/public-booking";
 import { ApiError } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
-import { formatGuestAssignedTables } from "@/lib/format";
+import { formatGuestAssignedTables, ordinal } from "@/lib/format";
+import { PhoneInput } from "@/components/phone-input";
 import type {
   PublicAvailabilitySlot,
   PublicReservation,
@@ -310,9 +311,11 @@ function StepDate({
 function JoinWaitlistPanel({
   slug,
   partySize,
+  tenant,
 }: {
   slug: string;
   partySize: number;
+  tenant: PublicTenant;
 }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -406,11 +409,11 @@ function JoinWaitlistPanel({
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="wl-phone">Phone</Label>
-          <Input
+          <PhoneInput
             id="wl-phone"
             value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="+62…"
+            onChange={setPhone}
+            tenantTimezone={tenant.timezone}
           />
         </div>
       </div>
@@ -514,7 +517,7 @@ function StepSlot({
           </div>
         )}
         {availabilityQuery.isSuccess && slots.length === 0 && tenant.waitlist?.enabled && (
-          <JoinWaitlistPanel slug={slug} partySize={state.party_size} />
+          <JoinWaitlistPanel slug={slug} partySize={state.party_size} tenant={tenant} />
         )}
         {availabilityQuery.isSuccess && slots.length > 0 && (
           <div className="space-y-5">
@@ -665,18 +668,21 @@ function StepDetails({
             <Label htmlFor="g-phone">
               Phone <span className="text-muted-foreground">(optional)</span>
             </Label>
-            <Input
+            <PhoneInput
               id="g-phone"
-              type="tel"
               value={state.guest.phone}
-              onChange={(e) =>
+              onChange={(next) =>
                 setState((s) => ({
                   ...s,
-                  guest: { ...s.guest, phone: e.target.value },
+                  guest: { ...s.guest, phone: next },
                 }))
               }
+              tenantTimezone={tenant.timezone}
               invalid={!!errs["guest.phone"]}
             />
+            {errs["guest.phone"]?.[0] && (
+              <p className="text-xs text-destructive">{errs["guest.phone"][0]}</p>
+            )}
           </div>
         </div>
 
@@ -792,17 +798,29 @@ function StepDone({
   tenant: PublicTenant | null;
 }) {
   const tz = tenant?.timezone ?? confirmation.restaurant_timezone ?? "UTC";
+  // Backend returns total_bookings AFTER the current booking has been
+  // incremented, so total > 1 ⇒ this guest has dined before.
+  const totalBookings = confirmation.guest?.total_bookings ?? 0;
+  const isReturning = totalBookings > 1;
   return (
     <Card className="p-8 text-center">
       <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-emerald-100 text-emerald-700">
         <Check className="h-6 w-6" />
       </div>
       <h2 className="mt-4 text-xl font-semibold">
-        {confirmation.status === "confirmed"
-          ? "Your booking is confirmed"
-          : "We've received your booking"}
+        {isReturning
+          ? `Welcome back${confirmation.guest?.name ? `, ${confirmation.guest.name.split(" ")[0]}` : ""}`
+          : confirmation.status === "confirmed"
+            ? "Your booking is confirmed"
+            : "We've received your booking"}
       </h2>
-      <p className="mt-1 text-sm text-muted-foreground">
+      {isReturning && (
+        <p className="mt-1 text-sm font-medium text-foreground">
+          This is your <span className="tabular-nums">{ordinal(totalBookings)}</span>{" "}
+          booking with {tenant?.name ?? "us"} — thank you for coming back.
+        </p>
+      )}
+      <p className={cn("text-sm text-muted-foreground", isReturning ? "mt-1" : "mt-1")}>
         {tenant?.name ?? "The restaurant"} will see you on{" "}
         {new Intl.DateTimeFormat(undefined, {
           weekday: "long",

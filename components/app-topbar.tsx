@@ -39,7 +39,7 @@ export function AppTopbar({ breadcrumbs, primaryAction }: AppTopbarProps) {
   };
 
   return (
-    <header className="flex h-14 items-center gap-2 border-b border-border bg-card px-4 sm:gap-3 sm:px-6">
+    <header className="flex h-14 items-center gap-2 border-b border-border bg-background px-4 sm:gap-3 sm:px-6">
       <Button
         type="button"
         variant="outline"

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Cake, Check, MoveRight, UserMinus, UserCheck, X } from "lucide-react";
 import {
   Sheet,
@@ -18,9 +18,9 @@ import {
   useReassignReservationTable,
   useAddReservationNote,
 } from "@/lib/hooks/use-reservations";
-import { useTablesList } from "@/lib/hooks/use-tables";
 import { useTenantTimezone } from "@/lib/hooks/use-tenant-timezone";
 import { formatDateInTz, formatTimeInTz, initials } from "@/lib/format";
+import { TableFloorPicker } from "@/components/table-floor-picker";
 import {
   Dialog,
   DialogContent,
@@ -31,13 +31,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { toast } from "@/components/ui/toaster";
 import { ApiError } from "@/lib/api/client";
 import type { Reservation, ReservationStatus } from "@/lib/types";
@@ -122,6 +115,14 @@ export function ReservationDetailDrawer({
               <div className="min-w-0 flex-1">
                 <SheetTitle className="flex items-center gap-2 text-lg">
                   {r.guest?.name ?? "Walk-in guest"}
+                  {(r.guest?.total_bookings ?? 0) > 1 && (
+                    <span
+                      className="inline-flex items-center gap-1 rounded-full border border-accent/40 bg-accent/20 px-2 py-0.5 text-[11px] font-medium text-accent-foreground"
+                      title={`${r.guest?.total_bookings} bookings on file`}
+                    >
+                      Returning · {r.guest?.total_bookings}
+                    </span>
+                  )}
                 </SheetTitle>
                 <div className="mt-1 flex items-center gap-2">
                   <span className="font-mono text-[12px] text-muted-foreground">
@@ -156,11 +157,12 @@ export function ReservationDetailDrawer({
                   <dd className="font-medium tabular-nums">
                     {r.party_size} {r.party_size === 1 ? "guest" : "guests"}
                   </dd>
-                  <dt className="text-muted-foreground">Tables</dt>
+                  <dt className="text-muted-foreground">Table</dt>
                   <dd className="font-medium">
-                    {r.tables && r.tables.length > 0
-                      ? r.tables.map((t) => `${t.name} · ${t.section}`).join(", ")
-                      : "—"}
+                    {r.table?.name
+                      ?? (r.tables && r.tables.length > 0
+                        ? r.tables.map((t) => t.name).join(", ")
+                        : "—")}
                   </dd>
                   <dt className="text-muted-foreground">Duration</dt>
                   <dd className="font-medium tabular-nums">
@@ -196,6 +198,15 @@ export function ReservationDetailDrawer({
                     <div className="mt-0.5 text-xs text-muted-foreground">
                       {r.guest.phone ?? "No phone"} · {r.guest.email ?? "No email"}
                     </div>
+                    {(r.guest.total_bookings ?? 0) > 0 && (
+                      <div className="mt-2 text-xs text-muted-foreground">
+                        <span className="font-medium text-foreground tabular-nums">
+                          {r.guest.total_bookings}
+                        </span>{" "}
+                        booking{r.guest.total_bookings === 1 ? "" : "s"} on file
+                        {(r.guest.total_bookings ?? 0) > 1 ? " — returning guest" : ""}
+                      </div>
+                    )}
                   </div>
                 </section>
               )}
@@ -403,16 +414,15 @@ function MoveTableDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const { data: tables = [] } = useTablesList();
   const reassign = useReassignReservationTable();
-  const [tableId, setTableId] = useState<string>("");
+  const [tableId, setTableId] = useState<string | null>(null);
 
-  const candidates = tables.filter(
-    (t) =>
-      t.status === "active" &&
-      t.id !== reservation.table_id &&
-      t.max_capacity >= reservation.party_size,
-  );
+  // Reset the picker selection whenever a new reservation is opened.
+  useEffect(() => {
+    if (open) {
+      setTableId(null);
+    }
+  }, [open, reservation.id]);
 
   async function handleMove() {
     if (!tableId) return;
@@ -426,36 +436,38 @@ function MoveTableDialog({
     }
   }
 
+  const currentTableName =
+    reservation.table?.name ??
+    reservation.tables?.map((t) => t.name).join(", ") ??
+    null;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle>Move to a different table</DialogTitle>
           <DialogDescription>
-            Pick any active table with capacity for {reservation.party_size} guests
-            at {formatTimeInTz(reservation.reserved_at, timeZone)}.
+            Pick any available table for {reservation.party_size} guests at{" "}
+            {formatTimeInTz(reservation.reserved_at, timeZone)}.
+            {currentTableName ? (
+              <>
+                {" "}Currently on{" "}
+                <span className="font-medium text-foreground">{currentTableName}</span>.
+              </>
+            ) : null}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-1.5">
-          <Label>Target table</Label>
-          <Select value={tableId} onValueChange={setTableId}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select a table" />
-            </SelectTrigger>
-            <SelectContent>
-              {candidates.length === 0 && (
-                <SelectItem value="__none__" disabled>
-                  No suitable tables
-                </SelectItem>
-              )}
-              {candidates.map((t) => (
-                <SelectItem key={t.id} value={t.id}>
-                  {t.name} — {t.section} · up to {t.max_capacity}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="space-y-2">
+          <TableFloorPicker
+            reservedAt={reservation.reserved_at}
+            durationMins={reservation.duration_mins}
+            partySize={reservation.party_size}
+            value={tableId}
+            onChange={setTableId}
+            excludeReservationId={reservation.id}
+            currentTableId={reservation.table_id ?? undefined}
+          />
         </div>
 
         <DialogFooter>

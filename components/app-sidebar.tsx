@@ -48,7 +48,7 @@ function AppSidebarBody({ onNavigate }: { onNavigate?: () => void }) {
       >
         <Search className="h-4 w-4 shrink-0" aria-hidden />
         Search…
-        <kbd className="ml-auto rounded border border-border bg-background px-1.5 py-0.5 font-mono text-[11px] leading-none text-muted-foreground not-italic">
+        <kbd className="ml-auto rounded border border-border bg-card px-1.5 py-0.5 font-mono text-[11px] leading-none text-muted-foreground not-italic">
           {modK}
         </kbd>
       </button>
@@ -59,7 +59,7 @@ function AppSidebarBody({ onNavigate }: { onNavigate?: () => void }) {
           target="_blank"
           rel="noopener noreferrer"
           onClick={afterInteract}
-          className="mt-2 flex h-9 items-center justify-center gap-2 rounded-lg border border-border bg-background px-2.5 text-[13px] font-medium text-foreground shadow-xs transition-colors hover:bg-muted"
+          className="mt-2 flex h-9 items-center justify-center gap-2 rounded-lg border border-border bg-card px-2.5 text-[13px] font-medium text-foreground shadow-xs transition-colors hover:bg-muted"
         >
           <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" />
           View booking page
@@ -152,7 +152,7 @@ export function AppSidebar() {
 
   return (
     <>
-      <aside className="hidden w-60 shrink-0 flex-col gap-1 border-r border-border bg-card p-4 lg:flex">
+      <aside className="hidden w-60 shrink-0 flex-col gap-1 border-r border-border bg-background p-4 lg:flex">
         <AppSidebarBody />
       </aside>
 
@@ -160,7 +160,7 @@ export function AppSidebar() {
         <SheetContent
           side="left"
           id="mobile-app-sidebar"
-          className="w-[min(280px,calc(100vw-3rem))] max-w-none border-r p-4 lg:hidden [&>button]:top-5"
+          className="w-[min(280px,calc(100vw-3rem))] max-w-none border-r bg-background p-4 lg:hidden [&>button]:top-5"
           aria-describedby={undefined}
         >
           <SheetTitle className="sr-only">Main navigation</SheetTitle>

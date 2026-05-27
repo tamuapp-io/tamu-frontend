@@ -83,6 +83,9 @@ export interface Guest {
   name: string | null;
   email: string | null;
   phone: string | null;
+  /** Lifetime count of created reservations (any status). Surfaced as
+   *  "returning customer" affordances at booking time. */
+  total_bookings?: number;
 }
 
 export interface Reservation {
@@ -253,7 +256,13 @@ export interface PublicReservation {
   duration_mins: number;
   special_requests?: string | null;
   occasion?: string | null;
-  guest?: { name: string | null; email: string | null; phone: string | null };
+  guest?: {
+    name: string | null;
+    email: string | null;
+    phone: string | null;
+    /** Lifetime count of created reservations for this email/phone, including the current one. */
+    total_bookings?: number;
+  };
   cancelled_at?: string | null;
   /** Assigned table(s): name + section for the guest (no internal ids). */
   assigned_tables?: { name: string; section?: string | null }[];
@@ -299,6 +308,8 @@ export interface GuestProfile extends Guest {
   is_blacklisted?: boolean;
   visit_count?: number;
   no_show_count?: number;
+  /** total_bookings is also inherited via Guest, redeclared for clarity. */
+  total_bookings?: number;
   last_visit_at?: string | null;
   created_at?: string;
 }
@@ -366,4 +377,23 @@ export interface ReportSummary {
     repeat_guest_rate_percent: number;
   };
   by_status: Record<string, number>;
+  /** Densified daily series in tenant TZ — every day in [from, to] is present
+   *  even when zero, so chart axes don't gap. Each row tracks per-status counts
+   *  alongside total + covers (sum of party_size for the bucket). */
+  by_day: ReportDailyRow[];
+  /** Party-size histogram, ascending by party_size. */
+  by_party_size: { party_size: number; count: number }[];
+}
+
+export interface ReportDailyRow {
+  date: string;
+  total: number;
+  covers: number;
+  pending: number;
+  confirmed: number;
+  seated: number;
+  completed: number;
+  cancelled: number;
+  no_show: number;
+  waitlisted: number;
 }

@@ -9,7 +9,7 @@ export default function PublicLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-svh bg-muted/40 antialiased">
+    <div className="min-h-svh bg-card antialiased">
       {children}
     </div>
   );

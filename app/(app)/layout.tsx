@@ -36,7 +36,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex min-h-svh bg-muted/30">
+    <div className="flex min-h-svh bg-card">
       <AppSidebar />
       <div className="flex min-w-0 flex-1 flex-col">{children}</div>
       <ReservationRealtimeSubscriber />
