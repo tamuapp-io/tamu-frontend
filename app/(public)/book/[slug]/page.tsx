@@ -37,6 +37,20 @@ function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
+/**
+ * Local-timezone "YYYY-MM-DDTHH:mm" string suitable for a
+ * `<input type="datetime-local" min=...>` attribute. Toisostring() would
+ * shift the value into UTC and break the browser's "min" comparison.
+ */
+function nowLocalDatetime() {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return (
+    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
+    `T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  );
+}
+
 export default function PublicBookingPage({
   params,
 }: {
@@ -385,6 +399,7 @@ function JoinWaitlistPanel({
             id="wl-slot"
             type="datetime-local"
             value={localSlot}
+            min={nowLocalDatetime()}
             onChange={(e) => setLocalSlot(e.target.value)}
           />
         </div>
