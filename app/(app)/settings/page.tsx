@@ -25,9 +25,22 @@ import { ApiError } from "@/lib/api/client";
 import { fetchSettings, patchSettings, syncOperatingHours } from "@/lib/api/settings";
 import { useUpdatePassword, useUpdateProfile } from "@/lib/hooks/use-auth";
 import { useAuthStore } from "@/lib/store/auth-store";
-import type { OperatingHourRow, TenantSettingsSnapshot } from "@/lib/types";
+import type {
+  OperatingHourRow,
+  TenantNotificationSettings,
+  TenantSettingsSnapshot,
+} from "@/lib/types";
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
+
+// 5, 10, 15, ..., 60 — matches the backend's `multiple_of:5` validation in
+// PatchTenantBrandingSettingsRequest and the snap/clamp in
+// Tenant::reminderMinutesBefore().
+const REMINDER_LEAD_OPTIONS: number[] = Array.from(
+  { length: 12 },
+  (_, i) => (i + 1) * 5,
+);
+const REMINDER_LEAD_DEFAULT = 30;
 
 type HoursDraftRow = {
   key: string;
@@ -255,6 +268,20 @@ export default function SettingsPage() {
     typeof data?.waitlist === "object" && data?.waitlist !== null ? data.waitlist : {}
   ) as { enabled?: boolean; auto_promote?: boolean };
 
+  const notificationsCfg = (
+    typeof data?.notifications === "object" && data?.notifications !== null
+      ? data.notifications
+      : {}
+  ) as TenantNotificationSettings;
+
+  // Effective lead time displayed in the Notifications tab. Tenants
+  // landing here for the first time see the global default (30) rather
+  // than an empty Select; saving any value writes it through to JSON.
+  const reminderLeadMinutes =
+    typeof notificationsCfg.reminder_minutes_before === "number"
+      ? notificationsCfg.reminder_minutes_before
+      : REMINDER_LEAD_DEFAULT;
+
   const slug = settings.data?.restaurant.slug;
   const canSaveRestaurant =
     draft != null && draft.name.trim() !== "" && draft.timezone.trim() !== "";
@@ -385,6 +412,9 @@ export default function SettingsPage() {
               </TabsTrigger>
               <TabsTrigger value="booking" className="shrink-0 px-3">
                 Booking
+              </TabsTrigger>
+              <TabsTrigger value="notifications" className="shrink-0 px-3">
+                Notifications
               </TabsTrigger>
             </TabsList>
 
@@ -1018,6 +1048,75 @@ export default function SettingsPage() {
             <Button type="button" variant="ghost" size="sm" onClick={() => settings.refetch()}>
               Reload from server
             </Button>
+            </TabsContent>
+
+            <TabsContent
+              value="notifications"
+              className="mt-6 space-y-6 focus-visible:outline-none"
+            >
+              <Card className="overflow-hidden shadow-xs">
+                <div className="border-b border-border bg-muted/30 px-6 py-4">
+                  <h2 className="text-sm font-semibold">Guest reminders</h2>
+                  <p className="text-xs text-muted-foreground">
+                    Email + WhatsApp reminders fire automatically before each
+                    confirmed reservation.
+                  </p>
+                </div>
+                <div className="space-y-5 p-6">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="max-w-md">
+                      <Label
+                        htmlFor="reminder-lead"
+                        className="text-sm font-semibold"
+                      >
+                        Reminder lead time
+                      </Label>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        How long before the reservation to send the reminder.
+                        Choose any value from 5 to 60 minutes, in 5-minute
+                        steps.
+                      </p>
+                    </div>
+                    <Select
+                      value={String(reminderLeadMinutes)}
+                      disabled={patch.isPending}
+                      onValueChange={(value) => {
+                        const minutes = Number(value);
+                        if (!Number.isFinite(minutes)) return;
+                        patch.mutate({
+                          notifications: {
+                            ...notificationsCfg,
+                            reminder_minutes_before: minutes,
+                          },
+                        });
+                      }}
+                    >
+                      <SelectTrigger id="reminder-lead" className="w-40">
+                        <SelectValue placeholder="Select lead time" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {REMINDER_LEAD_OPTIONS.map((m) => (
+                          <SelectItem key={m} value={String(m)}>
+                            {m === 60 ? "1 hour" : `${m} minutes`}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="rounded-lg border border-dashed border-border bg-muted/20 px-4 py-3 text-xs text-muted-foreground">
+                    Reminders fire at{" "}
+                    <span className="font-medium text-foreground tabular-nums">
+                      {reminderLeadMinutes === 60
+                        ? "1 hour"
+                        : `${reminderLeadMinutes} minutes`}
+                    </span>{" "}
+                    before each reservation. The scheduler ticks every 5
+                    minutes, so the actual send fires within a ±5-minute
+                    window around your target.
+                  </div>
+                </div>
+              </Card>
             </TabsContent>
           </Tabs>
         )}
