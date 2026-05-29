@@ -351,6 +351,19 @@ export interface TenantPublicProfileDraft {
   cover_url?: string | null;
 }
 
+/**
+ * Subset of tenant.settings the notifications tab cares about. The backend
+ * stores arbitrary JSON, so anything not listed here may still exist on
+ * the wire — treat reads defensively.
+ */
+export interface TenantNotificationSettings {
+  /** Lead time before slot to fire the guest reminder. Multiple of 5, 5–60. */
+  reminder_minutes_before?: number | null;
+  email_confirmation?: boolean;
+  /** Legacy array (hours-before); not consumed by the notifier today. */
+  reminder_hours_before?: number[];
+}
+
 export interface TenantSettingsSnapshot {
   restaurant: RestaurantSnapshot;
   settings: Record<string, unknown> | null;
