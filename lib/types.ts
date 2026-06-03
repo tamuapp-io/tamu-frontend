@@ -370,11 +370,46 @@ export interface TenantSettingsSnapshot {
   booking_rules: BookingRuleRow[];
   /** Weekly service windows + slot grid inputs; omit on older backends. */
   operating_hours?: OperatingHourRow[];
+  /** WasenderAPI inbox connection (API key redacted; webhook URL when configured). */
+  whatsapp_inbox?: WhatsappInboxStatus;
+}
+
+export interface WhatsappInboxStatus {
+  configured: boolean;
+  webhook_url: string | null;
+  api_key_hint: string | null;
+}
+
+export interface WhatsappConversation {
+  id: string;
+  phone_e164: string;
+  contact_name?: string | null;
+  guest_id?: string | null;
+  guest?: { id: string; name: string; phone?: string | null } | null;
+  last_message_at?: string | null;
+  last_message_preview?: string | null;
+  unread_count: number;
+}
+
+export interface WhatsappMessage {
+  id: string;
+  conversation_id: string;
+  direction: "inbound" | "outbound";
+  body: string;
+  status?: string | null;
+  sent_at?: string | null;
+  created_at?: string | null;
+}
+
+export interface WhatsappConversationDetail {
+  conversation: WhatsappConversation;
+  messages: WhatsappMessage[];
 }
 
 export interface PatchSettingsResponse {
   settings: Record<string, unknown> | null;
   restaurant: RestaurantSnapshot;
+  whatsapp_inbox?: WhatsappInboxStatus;
 }
 
 export interface ReportSummary {
