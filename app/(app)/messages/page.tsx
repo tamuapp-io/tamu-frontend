@@ -2,8 +2,18 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { MessageCircle, Send } from "lucide-react";
+import { MessageCircle, Send, Trash2 } from "lucide-react";
 import { AppTopbar } from "@/components/app-topbar";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -12,6 +22,7 @@ import { toast } from "@/components/ui/toaster";
 import { ApiError } from "@/lib/api/client";
 import { formatTimeInTz } from "@/lib/format";
 import {
+  useClearWhatsappConversation,
   useSendWhatsappMessage,
   useWhatsappConversation,
   useWhatsappConversations,
@@ -56,7 +67,9 @@ export default function MessagesPage() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const thread = useWhatsappConversation(activeId, configured);
   const send = useSendWhatsappMessage();
+  const clearChat = useClearWhatsappConversation();
   const [draft, setDraft] = useState("");
+  const [confirmClear, setConfirmClear] = useState(false);
 
   const rows = conversations.data ?? [];
 
@@ -96,6 +109,29 @@ export default function MessagesPage() {
         },
       },
     );
+  }
+
+  function handleClearChat() {
+    if (!activeId) return;
+
+    clearChat.mutate(activeId, {
+      onSuccess: () => {
+        setConfirmClear(false);
+        setDraft("");
+        setActiveId(null);
+        toast.success("Chat cleared");
+      },
+      onError: (err) => {
+        const flat =
+          err instanceof ApiError && err.errors
+            ? Object.values(err.errors).flat()[0]
+            : undefined;
+        toast.error(
+          "Could not clear chat",
+          flat ?? (err instanceof Error ? err.message : undefined),
+        );
+      },
+    });
   }
 
   return (
@@ -178,13 +214,26 @@ export default function MessagesPage() {
                 </div>
               ) : (
                 <>
-                  <header className="shrink-0 border-b border-border px-4 py-3">
-                    <h3 className="text-sm font-semibold">
-                      {displayName(activeConversation)}
-                    </h3>
-                    <p className="text-xs text-muted-foreground">
-                      {displayPhone(activeConversation.phone_e164)}
-                    </p>
+                  <header className="flex shrink-0 items-start justify-between gap-3 border-b border-border px-4 py-3">
+                    <div className="min-w-0">
+                      <h3 className="text-sm font-semibold">
+                        {displayName(activeConversation)}
+                      </h3>
+                      <p className="text-xs text-muted-foreground">
+                        {displayPhone(activeConversation.phone_e164)}
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0 text-destructive hover:text-destructive"
+                      disabled={clearChat.isPending}
+                      onClick={() => setConfirmClear(true)}
+                    >
+                      <Trash2 className="mr-1.5 size-3.5" aria-hidden />
+                      Clear chat
+                    </Button>
                   </header>
 
                   <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-4">
@@ -257,6 +306,30 @@ export default function MessagesPage() {
           </div>
         )}
       </div>
+
+      <AlertDialog open={confirmClear} onOpenChange={setConfirmClear}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clear this chat?</AlertDialogTitle>
+            <AlertDialogDescription>
+              All messages with{" "}
+              {activeConversation ? displayName(activeConversation) : "this guest"}{" "}
+              will be removed from your inbox. This does not delete the
+              conversation on WhatsApp — only Tamu&apos;s copy.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={clearChat.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={clearChat.isPending}
+              onClick={handleClearChat}
+            >
+              Clear chat
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
