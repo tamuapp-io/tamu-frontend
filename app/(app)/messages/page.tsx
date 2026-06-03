@@ -99,27 +99,29 @@ export default function MessagesPage() {
   }
 
   return (
-    <>
+    <div className="flex h-svh flex-col overflow-hidden">
       <AppTopbar
         breadcrumbs={[{ label: "Manage" }, { label: "WhatsApp", current: true }]}
       />
 
-      <div className="flex min-h-[calc(100dvh-3.5rem)] flex-col p-4 md:p-6">
+      <div className="flex min-h-0 flex-1 flex-col p-4 md:p-6">
         {status.isLoading ? (
-          <Skeleton className="h-96 w-full rounded-xl" />
+          <Skeleton className="min-h-0 flex-1 rounded-xl" />
         ) : !configured ? (
-          <NotConfiguredState />
+          <div className="flex flex-1 items-center justify-center">
+            <NotConfiguredState />
+          </div>
         ) : (
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-xs md:flex-row">
             {/* Conversation list */}
-            <aside className="flex w-full shrink-0 flex-col border-b border-border md:w-80 md:border-b-0 md:border-r">
-              <div className="border-b border-border px-4 py-3">
+            <aside className="flex min-h-0 flex-[2] flex-col border-b border-border md:w-80 md:flex-none md:shrink-0 md:border-b-0 md:border-r">
+              <div className="shrink-0 border-b border-border px-4 py-3">
                 <h2 className="text-sm font-semibold">Conversations</h2>
                 <p className="text-xs text-muted-foreground">
                   Guest messages to your WhatsApp number
                 </p>
               </div>
-              <div className="max-h-64 flex-1 overflow-y-auto md:max-h-none">
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
                 {conversations.isLoading ? (
                   <div className="space-y-2 p-3">
                     <Skeleton className="h-14 w-full" />
@@ -169,14 +171,14 @@ export default function MessagesPage() {
             </aside>
 
             {/* Thread */}
-            <section className="flex min-h-0 min-w-0 flex-1 flex-col">
+            <section className="flex min-h-0 min-w-0 flex-[3] flex-col overflow-hidden md:flex-1">
               {!activeId || !activeConversation ? (
                 <div className="flex flex-1 items-center justify-center p-8 text-sm text-muted-foreground">
                   Select a conversation
                 </div>
               ) : (
                 <>
-                  <header className="border-b border-border px-4 py-3">
+                  <header className="shrink-0 border-b border-border px-4 py-3">
                     <h3 className="text-sm font-semibold">
                       {displayName(activeConversation)}
                     </h3>
@@ -185,7 +187,7 @@ export default function MessagesPage() {
                     </p>
                   </header>
 
-                  <div className="flex-1 space-y-3 overflow-y-auto p-4">
+                  <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-4">
                     {thread.isLoading ? (
                       <Skeleton className="h-24 w-2/3" />
                     ) : (
@@ -224,7 +226,7 @@ export default function MessagesPage() {
 
                   <form
                     onSubmit={handleSend}
-                    className="flex gap-2 border-t border-border p-4"
+                    className="flex shrink-0 gap-2 border-t border-border p-4"
                   >
                     <textarea
                       value={draft}
@@ -255,6 +257,6 @@ export default function MessagesPage() {
           </div>
         )}
       </div>
-    </>
+    </div>
   );
 }
