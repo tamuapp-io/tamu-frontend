@@ -6,6 +6,7 @@ import {
   CircleUserRound,
   ClipboardList,
   Grid2x2,
+  MessageCircle,
   Settings,
   Users,
 } from "lucide-react";
@@ -32,6 +33,7 @@ export const APP_NAV_GROUPS: AppNavGroup[] = [
       { href: "/reservations", label: "Reservations", icon: Calendar, keywords: ["bookings"] },
       { href: "/walkins", label: "Walk-ins", icon: Users, keywords: ["walk in", "ledger"] },
       { href: "/waitlist", label: "Waitlist", icon: ClipboardList, keywords: ["queue"] },
+      { href: "/messages", label: "WhatsApp", icon: MessageCircle, keywords: ["chat", "inbox"] },
     ],
   },
   {
