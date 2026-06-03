@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  clearWhatsappConversation,
   fetchWhatsappConversation,
   fetchWhatsappConversations,
   fetchWhatsappStatus,
@@ -40,6 +41,18 @@ export function useSendWhatsappMessage() {
       sendWhatsappMessage(conversationId, body),
     onSuccess: (_res, vars) => {
       qc.invalidateQueries({ queryKey: ["whatsapp-conversation", vars.conversationId] });
+      qc.invalidateQueries({ queryKey: ["whatsapp-conversations"] });
+    },
+  });
+}
+
+export function useClearWhatsappConversation() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: (conversationId: string) => clearWhatsappConversation(conversationId),
+    onSuccess: (_res, conversationId) => {
+      qc.removeQueries({ queryKey: ["whatsapp-conversation", conversationId] });
       qc.invalidateQueries({ queryKey: ["whatsapp-conversations"] });
     },
   });

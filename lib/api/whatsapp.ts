@@ -34,3 +34,7 @@ export async function sendWhatsappMessage(
     { body },
   );
 }
+
+export async function clearWhatsappConversation(conversationId: string): Promise<void> {
+  return api.delete(`whatsapp/conversations/${conversationId}`);
+}
