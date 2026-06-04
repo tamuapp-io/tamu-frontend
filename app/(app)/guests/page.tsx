@@ -7,6 +7,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { GuestWhatsappButton } from "@/components/guest-whatsapp-button";
+import {
+  guestBookingLabel,
+  isReturningGuest,
+  ReturningGuestBadge,
+} from "@/components/returning-guest-badge";
 import { ApiError } from "@/lib/api/client";
 import { fetchGuests, updateGuestBlacklist } from "@/lib/api/guests";
 import type { GuestProfile } from "@/lib/types";
@@ -103,11 +109,18 @@ function GuestRow({
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card px-4 py-3">
       <div className="min-w-0">
-        <div className="truncate text-sm font-medium">{guest.name}</div>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="truncate text-sm font-medium">{guest.name}</div>
+          <ReturningGuestBadge totalBookings={guest.total_bookings} />
+        </div>
         <div className="truncate text-xs text-muted-foreground">
           {[guest.email, guest.phone].filter(Boolean).join(" · ") || "—"}
         </div>
-        <div className="mt-1 flex gap-2 text-[11px] text-muted-foreground">
+        <div className="mt-1 flex flex-wrap gap-2 text-[11px] text-muted-foreground">
+          <span>{guestBookingLabel(guest.total_bookings)}</span>
+          {isReturningGuest(guest.total_bookings) ? (
+            <span className="font-medium text-foreground">Returning guest</span>
+          ) : null}
           <span>Visits {(guest.visit_count ?? 0) as number}</span>
           <span>No-show {(guest.no_show_count ?? 0) as number}</span>
         </div>
@@ -116,6 +129,11 @@ function GuestRow({
         {guest.is_blacklisted ? (
           <Badge variant="warning">Blacklist</Badge>
         ) : null}
+        <GuestWhatsappButton
+          phone={guest.phone}
+          guestId={guest.id}
+          name={guest.name}
+        />
         <Button
           type="button"
           size="sm"

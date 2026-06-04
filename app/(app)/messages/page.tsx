@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { MessageCircle, Send, Trash2 } from "lucide-react";
 import { AppTopbar } from "@/components/app-topbar";
 import {
@@ -59,6 +60,8 @@ function NotConfiguredState() {
 }
 
 export default function MessagesPage() {
+  const searchParams = useSearchParams();
+  const deepLinkConversationId = searchParams.get("conversation");
   const timezone = useAuthStore((s) => s.tenant?.timezone ?? "UTC");
   const status = useWhatsappStatus();
   const configured = status.data?.configured === true;
@@ -74,6 +77,10 @@ export default function MessagesPage() {
   const rows = conversations.data ?? [];
 
   useEffect(() => {
+    if (deepLinkConversationId) {
+      setActiveId(deepLinkConversationId);
+      return;
+    }
     if (rows.length === 0) {
       setActiveId(null);
       return;
@@ -81,7 +88,7 @@ export default function MessagesPage() {
     if (activeId == null || !rows.some((r) => r.id === activeId)) {
       setActiveId(rows[0]!.id);
     }
-  }, [rows, activeId]);
+  }, [rows, activeId, deepLinkConversationId]);
 
   const activeConversation = useMemo(
     () => rows.find((r) => r.id === activeId) ?? thread.data?.conversation ?? null,

@@ -10,6 +10,8 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { GuestWhatsappButton } from "@/components/guest-whatsapp-button";
+import { ReturningGuestBadge } from "@/components/returning-guest-badge";
 import { StatusPill } from "@/components/status-pill";
 import {
   useReservation,
@@ -115,14 +117,7 @@ export function ReservationDetailDrawer({
               <div className="min-w-0 flex-1">
                 <SheetTitle className="flex items-center gap-2 text-lg">
                   {r.guest?.name ?? "Walk-in guest"}
-                  {(r.guest?.total_bookings ?? 0) > 1 && (
-                    <span
-                      className="inline-flex items-center gap-1 rounded-full border border-accent/40 bg-accent/20 px-2 py-0.5 text-[11px] font-medium text-accent-foreground"
-                      title={`${r.guest?.total_bookings} bookings on file`}
-                    >
-                      Returning · {r.guest?.total_bookings}
-                    </span>
-                  )}
+                  <ReturningGuestBadge totalBookings={r.guest?.total_bookings} />
                 </SheetTitle>
                 <div className="mt-1 flex items-center gap-2">
                   <span className="font-mono text-[12px] text-muted-foreground">
@@ -194,19 +189,28 @@ export function ReservationDetailDrawer({
                 <section>
                   <div className="label-cap mb-2">Guest</div>
                   <div className="rounded-lg border border-border p-3 text-sm">
-                    <div className="font-medium">{r.guest.name ?? "—"}</div>
-                    <div className="mt-0.5 text-xs text-muted-foreground">
-                      {r.guest.phone ?? "No phone"} · {r.guest.email ?? "No email"}
-                    </div>
-                    {(r.guest.total_bookings ?? 0) > 0 && (
-                      <div className="mt-2 text-xs text-muted-foreground">
-                        <span className="font-medium text-foreground tabular-nums">
-                          {r.guest.total_bookings}
-                        </span>{" "}
-                        booking{r.guest.total_bookings === 1 ? "" : "s"} on file
-                        {(r.guest.total_bookings ?? 0) > 1 ? " — returning guest" : ""}
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="font-medium">{r.guest.name ?? "—"}</div>
+                        <div className="mt-0.5 text-xs text-muted-foreground">
+                          {r.guest.phone ?? "No phone"} · {r.guest.email ?? "No email"}
+                        </div>
+                        {(r.guest.total_bookings ?? 0) > 0 && (
+                          <div className="mt-2 text-xs text-muted-foreground">
+                            <span className="font-medium text-foreground tabular-nums">
+                              {r.guest.total_bookings}
+                            </span>{" "}
+                            booking{r.guest.total_bookings === 1 ? "" : "s"} on file
+                            {(r.guest.total_bookings ?? 0) > 1 ? " — returning guest" : ""}
+                          </div>
+                        )}
                       </div>
-                    )}
+                      <GuestWhatsappButton
+                        phone={r.guest.phone}
+                        guestId={r.guest.id}
+                        name={r.guest.name}
+                      />
+                    </div>
                   </div>
                 </section>
               )}
