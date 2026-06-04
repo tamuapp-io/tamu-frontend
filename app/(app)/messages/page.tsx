@@ -102,6 +102,20 @@ function MessagesPageContent() {
     [rows, activeId, thread.data?.conversation],
   );
 
+  /** Include a deep-linked / newly opened thread in the sidebar before list refetch. */
+  const sidebarRows = useMemo(() => {
+    if (!activeId || rows.some((r) => r.id === activeId)) {
+      return rows;
+    }
+    const fromThread = thread.data?.conversation;
+    if (fromThread?.id === activeId) {
+      return [fromThread, ...rows];
+    }
+    return rows;
+  }, [rows, activeId, thread.data?.conversation]);
+
+  const threadReady = !!activeConversation;
+
   function handleSend(e: FormEvent) {
     e.preventDefault();
     const body = draft.trim();
@@ -178,14 +192,14 @@ function MessagesPageContent() {
                     <Skeleton className="h-14 w-full" />
                     <Skeleton className="h-14 w-full" />
                   </div>
-                ) : rows.length === 0 ? (
+                ) : sidebarRows.length === 0 ? (
                   <p className="p-4 text-sm text-muted-foreground">
                     No messages yet. Share your number with guests or paste the
                     webhook URL from Settings into WasenderAPI.
                   </p>
                 ) : (
                   <ul className="divide-y divide-border">
-                    {rows.map((row) => (
+                    {sidebarRows.map((row) => (
                       <li key={row.id}>
                         <button
                           type="button"
@@ -221,9 +235,9 @@ function MessagesPageContent() {
               </div>
             </aside>
 
-            {/* Thread */}
+            {/* Thread — show composer whenever a thread is selected, even if still loading */}
             <section className="flex min-h-0 min-w-0 flex-3 flex-col overflow-hidden md:flex-1">
-              {!activeId || !activeConversation ? (
+              {!activeId ? (
                 <div className="flex flex-1 items-center justify-center p-8 text-sm text-muted-foreground">
                   Select a conversation
                 </div>
@@ -231,19 +245,28 @@ function MessagesPageContent() {
                 <>
                   <header className="flex shrink-0 items-start justify-between gap-3 border-b border-border px-4 py-3">
                     <div className="min-w-0">
-                      <h3 className="text-sm font-semibold">
-                        {displayName(activeConversation)}
-                      </h3>
-                      <p className="text-xs text-muted-foreground">
-                        {displayPhone(activeConversation.phone_e164)}
-                      </p>
+                      {threadReady ? (
+                        <>
+                          <h3 className="text-sm font-semibold">
+                            {displayName(activeConversation!)}
+                          </h3>
+                          <p className="text-xs text-muted-foreground">
+                            {displayPhone(activeConversation!.phone_e164)}
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <Skeleton className="h-4 w-32" />
+                          <Skeleton className="mt-1 h-3 w-24" />
+                        </>
+                      )}
                     </div>
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
                       className="shrink-0 text-destructive hover:text-destructive"
-                      disabled={clearChat.isPending}
+                      disabled={clearChat.isPending || !threadReady}
                       onClick={() => setConfirmClear(true)}
                     >
                       <Trash2 className="mr-1.5 size-3.5" aria-hidden />
@@ -253,7 +276,17 @@ function MessagesPageContent() {
 
                   <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-4">
                     {thread.isLoading ? (
-                      <Skeleton className="h-24 w-2/3" />
+                      <p className="text-sm text-muted-foreground">
+                        Loading conversation…
+                      </p>
+                    ) : thread.isError ? (
+                      <p className="text-sm text-destructive">
+                        Could not load this conversation. You can still try sending a message below.
+                      </p>
+                    ) : (thread.data?.messages ?? []).length === 0 ? (
+                      <p className="text-sm text-muted-foreground">
+                        No messages yet. Send the first message to this guest.
+                      </p>
                     ) : (
                       (thread.data?.messages ?? []).map((msg) => {
                         const outbound = msg.direction === "outbound";
@@ -295,7 +328,7 @@ function MessagesPageContent() {
                     <textarea
                       value={draft}
                       onChange={(e) => setDraft(e.target.value)}
-                      placeholder="Type a reply…"
+                      placeholder="Type a message…"
                       rows={2}
                       disabled={send.isPending}
                       className="min-h-11 flex-1 resize-none rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50"

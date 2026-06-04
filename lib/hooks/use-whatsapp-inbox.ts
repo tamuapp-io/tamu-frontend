@@ -7,6 +7,7 @@ import {
   openWhatsappConversation,
   sendWhatsappMessage,
 } from "@/lib/api/whatsapp";
+import type { WhatsappConversation, WhatsappConversationDetail } from "@/lib/types";
 
 export function useWhatsappStatus() {
   return useQuery({
@@ -65,8 +66,19 @@ export function useOpenWhatsappConversation() {
   return useMutation({
     mutationFn: (payload: { phone: string; guest_id?: string; name?: string }) =>
       openWhatsappConversation(payload),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["whatsapp-conversations"] });
+    onSuccess: (res) => {
+      const conversation = res.data;
+      qc.setQueryData<WhatsappConversationDetail>(
+        ["whatsapp-conversation", conversation.id],
+        { conversation, messages: [] },
+      );
+      qc.setQueryData<WhatsappConversation[]>(["whatsapp-conversations"], (old) => {
+        const list = old ?? [];
+        if (list.some((row) => row.id === conversation.id)) {
+          return list;
+        }
+        return [conversation, ...list];
+      });
     },
   });
 }
