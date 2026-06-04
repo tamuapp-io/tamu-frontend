@@ -1,8 +1,8 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, Suspense, useMemo, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { MessageCircle, Send, Trash2 } from "lucide-react";
 import { AppTopbar } from "@/components/app-topbar";
 import {
@@ -59,7 +59,21 @@ function NotConfiguredState() {
   );
 }
 
-export default function MessagesPage() {
+function MessagesPageFallback() {
+  return (
+    <div className="flex h-svh flex-col overflow-hidden">
+      <AppTopbar
+        breadcrumbs={[{ label: "Manage" }, { label: "WhatsApp", current: true }]}
+      />
+      <div className="flex min-h-0 flex-1 flex-col p-4 md:p-6">
+        <Skeleton className="min-h-0 flex-1 rounded-xl" />
+      </div>
+    </div>
+  );
+}
+
+function MessagesPageContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const deepLinkConversationId = searchParams.get("conversation");
   const timezone = useAuthStore((s) => s.tenant?.timezone ?? "UTC");
@@ -67,28 +81,21 @@ export default function MessagesPage() {
   const configured = status.data?.configured === true;
 
   const conversations = useWhatsappConversations(configured);
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const thread = useWhatsappConversation(activeId, configured);
+  const [pickedId, setPickedId] = useState<string | null>(null);
   const send = useSendWhatsappMessage();
   const clearChat = useClearWhatsappConversation();
   const [draft, setDraft] = useState("");
   const [confirmClear, setConfirmClear] = useState(false);
 
-  const rows = conversations.data ?? [];
+  const rows = useMemo(() => conversations.data ?? [], [conversations.data]);
 
-  useEffect(() => {
-    if (deepLinkConversationId) {
-      setActiveId(deepLinkConversationId);
-      return;
-    }
-    if (rows.length === 0) {
-      setActiveId(null);
-      return;
-    }
-    if (activeId == null || !rows.some((r) => r.id === activeId)) {
-      setActiveId(rows[0]!.id);
-    }
-  }, [rows, activeId, deepLinkConversationId]);
+  const activeId = useMemo(() => {
+    if (pickedId !== null) return pickedId;
+    if (deepLinkConversationId) return deepLinkConversationId;
+    return rows[0]?.id ?? null;
+  }, [pickedId, deepLinkConversationId, rows]);
+
+  const thread = useWhatsappConversation(activeId, configured);
 
   const activeConversation = useMemo(
     () => rows.find((r) => r.id === activeId) ?? thread.data?.conversation ?? null,
@@ -125,7 +132,8 @@ export default function MessagesPage() {
       onSuccess: () => {
         setConfirmClear(false);
         setDraft("");
-        setActiveId(null);
+        setPickedId(null);
+        router.replace("/messages");
         toast.success("Chat cleared");
       },
       onError: (err) => {
@@ -157,7 +165,7 @@ export default function MessagesPage() {
         ) : (
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-xs md:flex-row">
             {/* Conversation list */}
-            <aside className="flex min-h-0 flex-[2] flex-col border-b border-border md:w-80 md:flex-none md:shrink-0 md:border-b-0 md:border-r">
+            <aside className="flex min-h-0 flex-2 flex-col border-b border-border md:w-80 md:flex-none md:shrink-0 md:border-b-0 md:border-r">
               <div className="shrink-0 border-b border-border px-4 py-3">
                 <h2 className="text-sm font-semibold">Conversations</h2>
                 <p className="text-xs text-muted-foreground">
@@ -181,7 +189,7 @@ export default function MessagesPage() {
                       <li key={row.id}>
                         <button
                           type="button"
-                          onClick={() => setActiveId(row.id)}
+                          onClick={() => setPickedId(row.id)}
                           className={cn(
                             "flex w-full flex-col gap-0.5 px-4 py-3 text-left transition-colors hover:bg-muted/50",
                             activeId === row.id && "bg-muted/60",
@@ -214,7 +222,7 @@ export default function MessagesPage() {
             </aside>
 
             {/* Thread */}
-            <section className="flex min-h-0 min-w-0 flex-[3] flex-col overflow-hidden md:flex-1">
+            <section className="flex min-h-0 min-w-0 flex-3 flex-col overflow-hidden md:flex-1">
               {!activeId || !activeConversation ? (
                 <div className="flex flex-1 items-center justify-center p-8 text-sm text-muted-foreground">
                   Select a conversation
@@ -290,7 +298,7 @@ export default function MessagesPage() {
                       placeholder="Type a reply…"
                       rows={2}
                       disabled={send.isPending}
-                      className="min-h-[2.75rem] flex-1 resize-none rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50"
+                      className="min-h-11 flex-1 resize-none rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50"
                       onKeyDown={(e) => {
                         if (e.key === "Enter" && !e.shiftKey) {
                           e.preventDefault();
@@ -338,5 +346,13 @@ export default function MessagesPage() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+export default function MessagesPage() {
+  return (
+    <Suspense fallback={<MessagesPageFallback />}>
+      <MessagesPageContent />
+    </Suspense>
   );
 }

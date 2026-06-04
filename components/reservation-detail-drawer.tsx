@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Cake, Check, MoveRight, UserMinus, UserCheck, X } from "lucide-react";
 import {
   Sheet,
@@ -104,7 +104,7 @@ export function ReservationDetailDrawer({
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
       <SheetContent side="right" className="overflow-y-auto p-0">
-        <SheetHeader className="!flex-row items-start gap-3 !border-b-0 !pb-3">
+        <SheetHeader className="flex-row! items-start gap-3 border-b-0! pb-3!">
           {!r ? (
             <SheetTitle className="sr-only">
               {isPending ? "Loading reservation" : "Reservation details"}
@@ -260,7 +260,7 @@ export function ReservationDetailDrawer({
         </div>
 
         {r && (
-          <SheetFooter className="!mt-0 !flex-col items-stretch gap-3 sm:!flex-col">
+          <SheetFooter className="mt-0! flex-col! items-stretch gap-3 sm:flex-col!">
             <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
               Next valid states:{" "}
               {allowed.length === 0 ? (
@@ -324,6 +324,7 @@ export function ReservationDetailDrawer({
             onCancelled={onClose}
           />
           <MoveTableDialog
+            key={r.id}
             reservation={r}
             timeZone={tz}
             open={moveOpen}
@@ -421,19 +422,19 @@ function MoveTableDialog({
   const reassign = useReassignReservationTable();
   const [tableId, setTableId] = useState<string | null>(null);
 
-  // Reset the picker selection whenever a new reservation is opened.
-  useEffect(() => {
-    if (open) {
+  function handleOpenChange(next: boolean) {
+    if (next) {
       setTableId(null);
     }
-  }, [open, reservation.id]);
+    onOpenChange(next);
+  }
 
   async function handleMove() {
     if (!tableId) return;
     try {
       await reassign.mutateAsync({ id: reservation.id, table_id: tableId });
       toast.success("Table reassigned");
-      onOpenChange(false);
+      handleOpenChange(false);
     } catch (err) {
       const message = err instanceof ApiError ? err.message : "Could not move table";
       toast.error("Move failed", message);
@@ -446,7 +447,7 @@ function MoveTableDialog({
     null;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle>Move to a different table</DialogTitle>
@@ -475,7 +476,7 @@ function MoveTableDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => handleOpenChange(false)}>
             Cancel
           </Button>
           <Button
