@@ -14,6 +14,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ReservationDetailDrawer } from "@/components/reservation-detail-drawer";
+import { GuestWhatsappButton } from "@/components/guest-whatsapp-button";
+import { ReturningGuestBadge } from "@/components/returning-guest-badge";
 import { WalkinDialog } from "@/components/walkin-dialog";
 import { useReservationsList } from "@/lib/hooks/use-reservations";
 import { useTenantTimezone } from "@/lib/hooks/use-tenant-timezone";
@@ -294,7 +296,7 @@ function ReservationRow({
         }
       }}
       className={cn(
-        "relative grid cursor-pointer grid-cols-[68px_1fr_72px_180px_88px_120px_40px] items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/40",
+        "relative grid cursor-pointer grid-cols-[68px_1fr_72px_180px_88px_120px_72px] items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/40",
         selected && "bg-muted/60",
       )}
     >
@@ -309,8 +311,11 @@ function ReservationRow({
           {initials(r.guest?.name)}
         </span>
         <div className="min-w-0">
-          <div className="truncate text-sm font-medium">
-            {r.guest?.name ?? "Walk-in guest"}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="truncate text-sm font-medium">
+              {r.guest?.name ?? "Walk-in guest"}
+            </span>
+            <ReturningGuestBadge totalBookings={r.guest?.total_bookings} />
           </div>
           <div className="truncate text-[12px] text-muted-foreground">
             {r.guest?.phone ?? r.guest?.email ?? r.confirmation_code}
@@ -327,9 +332,16 @@ function ReservationRow({
         {r.source}
       </span>
       <StatusPill status={r.status} />
-      <span className="text-muted-foreground" aria-hidden>
-        ⋯
-      </span>
+      <div className="flex justify-end">
+        <GuestWhatsappButton
+          phone={r.guest?.phone}
+          guestId={r.guest?.id}
+          name={r.guest?.name}
+          iconOnly
+          variant="ghost"
+          onClick={(e) => e.stopPropagation()}
+        />
+      </div>
     </li>
   );
 }
@@ -340,7 +352,7 @@ function ListSkeleton() {
       {Array.from({ length: 6 }).map((_, i) => (
         <li
           key={i}
-          className="grid grid-cols-[68px_1fr_72px_180px_88px_120px_40px] items-center gap-3 px-4 py-3"
+          className="grid grid-cols-[68px_1fr_72px_180px_88px_120px_72px] items-center gap-3 px-4 py-3"
         >
           <div className="h-4 w-12 animate-pulse rounded bg-muted" />
           <div className="flex items-center gap-2.5">

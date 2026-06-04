@@ -4,6 +4,7 @@ import {
   fetchWhatsappConversation,
   fetchWhatsappConversations,
   fetchWhatsappStatus,
+  openWhatsappConversation,
   sendWhatsappMessage,
 } from "@/lib/api/whatsapp";
 
@@ -53,6 +54,18 @@ export function useClearWhatsappConversation() {
     mutationFn: (conversationId: string) => clearWhatsappConversation(conversationId),
     onSuccess: (_res, conversationId) => {
       qc.removeQueries({ queryKey: ["whatsapp-conversation", conversationId] });
+      qc.invalidateQueries({ queryKey: ["whatsapp-conversations"] });
+    },
+  });
+}
+
+export function useOpenWhatsappConversation() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: { phone: string; guest_id?: string; name?: string }) =>
+      openWhatsappConversation(payload),
+    onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["whatsapp-conversations"] });
     },
   });

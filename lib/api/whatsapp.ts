@@ -38,3 +38,11 @@ export async function sendWhatsappMessage(
 export async function clearWhatsappConversation(conversationId: string): Promise<void> {
   return api.delete(`whatsapp/conversations/${conversationId}`);
 }
+
+export async function openWhatsappConversation(payload: {
+  phone: string;
+  guest_id?: string;
+  name?: string;
+}): Promise<{ data: WhatsappConversation }> {
+  return api.post<ItemEnvelope<WhatsappConversation>>("whatsapp/conversations/open", payload);
+}
