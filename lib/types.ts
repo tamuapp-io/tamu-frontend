@@ -376,6 +376,7 @@ export interface TenantSettingsSnapshot {
 
 export interface WhatsappInboxStatus {
   configured: boolean;
+  session_connected?: boolean | null;
   webhook_url: string | null;
   api_key_hint: string | null;
 }

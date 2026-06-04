@@ -79,6 +79,7 @@ function MessagesPageContent() {
   const timezone = useAuthStore((s) => s.tenant?.timezone ?? "UTC");
   const status = useWhatsappStatus();
   const configured = status.data?.configured === true;
+  const sessionDisconnected = configured && status.data?.session_connected === false;
 
   const conversations = useWhatsappConversations(configured);
   const [pickedId, setPickedId] = useState<string | null>(null);
@@ -126,7 +127,7 @@ function MessagesPageContent() {
       {
         onSuccess: () => {
           setDraft("");
-          toast.success("Message sent");
+          toast.success("Message sent", "It may take a few seconds to appear on WhatsApp.");
         },
         onError: (err) => {
           const flat =
@@ -180,6 +181,13 @@ function MessagesPageContent() {
             <NotConfiguredState />
           </div>
         ) : (
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden gap-3">
+            {sessionDisconnected ? (
+              <div className="shrink-0 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-950 dark:text-amber-100">
+                Your Wasender session is disconnected. Reconnect WhatsApp in the Wasender
+                dashboard, then save your session API key again in Settings → Notifications.
+              </div>
+            ) : null}
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-xs md:flex-row">
             {/* Conversation list */}
             <aside className="flex min-h-0 flex-2 flex-col border-b border-border md:w-80 md:flex-none md:shrink-0 md:border-b-0 md:border-r">
@@ -356,6 +364,7 @@ function MessagesPageContent() {
                 </>
               )}
             </section>
+          </div>
           </div>
         )}
       </div>
