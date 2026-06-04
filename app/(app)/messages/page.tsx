@@ -124,7 +124,10 @@ function MessagesPageContent() {
     send.mutate(
       { conversationId: activeId, body },
       {
-        onSuccess: () => setDraft(""),
+        onSuccess: () => {
+          setDraft("");
+          toast.success("Message sent");
+        },
         onError: (err) => {
           const flat =
             err instanceof ApiError && err.errors
@@ -285,7 +288,9 @@ function MessagesPageContent() {
                       </p>
                     ) : (thread.data?.messages ?? []).length === 0 ? (
                       <p className="text-sm text-muted-foreground">
-                        No messages yet. Send the first message to this guest.
+                        No messages yet. Send the first message to this guest. They must
+                        have WhatsApp on this number; it may take a moment to appear in
+                        your phone app for new contacts.
                       </p>
                     ) : (
                       (thread.data?.messages ?? []).map((msg) => {
