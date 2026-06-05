@@ -32,6 +32,8 @@ import {
 import { useAuthStore } from "@/lib/store/auth-store";
 import type { WhatsappConversation } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { WhatsappContactAvatar } from "@/components/whatsapp-contact-avatar";
+import { WhatsappGuestProfilePanel } from "@/components/whatsapp-guest-profile-panel";
 
 function displayPhone(phone: string): string {
   return phone.startsWith("+") ? phone : `+${phone}`;
@@ -98,10 +100,15 @@ function MessagesPageContent() {
 
   const thread = useWhatsappConversation(activeId, configured);
 
-  const activeConversation = useMemo(
-    () => rows.find((r) => r.id === activeId) ?? thread.data?.conversation ?? null,
-    [rows, activeId, thread.data?.conversation],
-  );
+  const activeConversation = useMemo(() => {
+    const fromList = rows.find((r) => r.id === activeId);
+    const fromThread = thread.data?.conversation;
+    if (fromThread?.id === activeId) {
+      return fromThread;
+    }
+
+    return fromList ?? fromThread ?? null;
+  }, [rows, activeId, thread.data?.conversation]);
 
   /** Include a deep-linked / newly opened thread in the sidebar before list refetch. */
   const sidebarRows = useMemo(() => {
@@ -187,9 +194,9 @@ function MessagesPageContent() {
                 dashboard, then save your session API key again in Settings → Notifications.
               </div>
             ) : null}
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-xs md:flex-row">
-            {/* Conversation list */}
-            <aside className="flex min-h-0 flex-2 flex-col border-b border-border md:w-80 md:flex-none md:shrink-0 md:border-b-0 md:border-r">
+          <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden rounded-xl border border-border bg-card shadow-xs lg:grid-cols-[25%_50%_25%]">
+            {/* Conversation list — 25% */}
+            <aside className="flex min-h-0 flex-col border-b border-border lg:border-b-0 lg:border-r">
               <div className="shrink-0 border-b border-border px-4 py-3">
                 <h2 className="text-sm font-semibold">Conversations</h2>
                 <p className="text-xs text-muted-foreground">
@@ -215,10 +222,17 @@ function MessagesPageContent() {
                           type="button"
                           onClick={() => setPickedId(row.id)}
                           className={cn(
-                            "flex w-full flex-col gap-0.5 px-4 py-3 text-left transition-colors hover:bg-muted/50",
+                            "flex w-full gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/50",
                             activeId === row.id && "bg-muted/60",
                           )}
                         >
+                          <WhatsappContactAvatar
+                            name={displayName(row)}
+                            avatarUrl={row.contact_avatar_url}
+                            size="sm"
+                            className="mt-0.5"
+                          />
+                          <div className="min-w-0 flex-1">
                           <div className="flex items-center justify-between gap-2">
                             <span className="truncate text-sm font-medium">
                               {displayName(row)}
@@ -237,6 +251,7 @@ function MessagesPageContent() {
                               {formatTimeInTz(row.last_message_at, timezone)}
                             </span>
                           ) : null}
+                          </div>
                         </button>
                       </li>
                     ))}
@@ -245,22 +260,22 @@ function MessagesPageContent() {
               </div>
             </aside>
 
-            {/* Thread — show composer whenever a thread is selected, even if still loading */}
-            <section className="flex min-h-0 min-w-0 flex-3 flex-col overflow-hidden md:flex-1">
+            {/* Chat thread — 50% */}
+            <section className="flex min-h-0 min-w-0 flex-col overflow-hidden">
               {!activeId ? (
                 <div className="flex flex-1 items-center justify-center p-8 text-sm text-muted-foreground">
                   Select a conversation
                 </div>
               ) : (
                 <>
-                  <header className="flex shrink-0 items-start justify-between gap-3 border-b border-border px-4 py-3">
+                  <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-3">
                     <div className="min-w-0">
                       {threadReady ? (
                         <>
-                          <h3 className="text-sm font-semibold">
+                          <h3 className="truncate text-sm font-semibold">
                             {displayName(activeConversation!)}
                           </h3>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="truncate text-xs text-muted-foreground">
                             {displayPhone(activeConversation!.phone_e164)}
                           </p>
                         </>
@@ -319,7 +334,11 @@ function MessagesPageContent() {
                                 failed && "opacity-90 ring-1 ring-destructive/40",
                               )}
                             >
-                              {msg.body}
+                              {msg.body.startsWith("[Image]") ? (
+                                <span className="italic opacity-90">{msg.body}</span>
+                              ) : (
+                                msg.body
+                              )}
                               <div
                                 className={cn(
                                   "mt-1 text-[10px] tabular-nums opacity-70",
@@ -370,6 +389,13 @@ function MessagesPageContent() {
                 </>
               )}
             </section>
+
+            {/* Guest profile — 25% */}
+            <WhatsappGuestProfilePanel
+              conversation={activeConversation}
+              loading={!!activeId && thread.isLoading && !threadReady}
+              timezone={timezone}
+            />
           </div>
           </div>
         )}

@@ -385,8 +385,9 @@ export interface WhatsappConversation {
   id: string;
   phone_e164: string;
   contact_name?: string | null;
+  contact_avatar_url?: string | null;
   guest_id?: string | null;
-  guest?: { id: string; name: string; phone?: string | null } | null;
+  guest?: GuestProfile | null;
   last_message_at?: string | null;
   last_message_preview?: string | null;
   unread_count: number;
