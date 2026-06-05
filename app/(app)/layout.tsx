@@ -6,6 +6,7 @@ import { useAuthStore } from "@/lib/store/auth-store";
 import { useCurrentUser } from "@/lib/hooks/use-auth";
 import { AppSidebar } from "@/components/app-sidebar";
 import { AppCommandPalette } from "@/components/app-command-palette";
+import { BrowserNotificationPrompt } from "@/components/browser-notification-prompt";
 import { ReservationRealtimeSubscriber } from "@/components/reservation-realtime-subscriber";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -40,6 +41,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <AppSidebar />
       <div className="flex min-w-0 flex-1 flex-col">{children}</div>
       <ReservationRealtimeSubscriber />
+      <BrowserNotificationPrompt />
       <AppCommandPalette />
     </div>
   );

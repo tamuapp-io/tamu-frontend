@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "@/components/ui/toaster";
 import { VenueTimezonePicker } from "@/components/venue-timezone-picker";
+import { StaffBrowserNotificationsSettings } from "@/components/staff-browser-notifications-settings";
 import { ApiError } from "@/lib/api/client";
 import { fetchSettings, patchSettings, syncOperatingHours } from "@/lib/api/settings";
 import { useUpdatePassword, useUpdateProfile } from "@/lib/hooks/use-auth";
@@ -1096,6 +1097,18 @@ export default function SettingsPage() {
               value="notifications"
               className="mt-6 space-y-6 focus-visible:outline-none"
             >
+              <Card className="overflow-hidden shadow-xs">
+                <div className="border-b border-border bg-muted/30 px-6 py-4">
+                  <h2 className="text-sm font-semibold">Staff desktop alerts</h2>
+                  <p className="text-xs text-muted-foreground">
+                    Browser notifications for new reservations while Tamu is open.
+                  </p>
+                </div>
+                <div className="p-6">
+                  <StaffBrowserNotificationsSettings />
+                </div>
+              </Card>
+
               <Card className="overflow-hidden shadow-xs">
                 <div className="border-b border-border bg-muted/30 px-6 py-4">
                   <h2 className="text-sm font-semibold">Guest reminders</h2>
