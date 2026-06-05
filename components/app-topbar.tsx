@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { LogOut, Menu, Plus, User, X } from "lucide-react";
 import { AppNotificationsMenu } from "@/components/app-notifications-menu";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
