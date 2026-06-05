@@ -10,8 +10,6 @@ const SOUND_SRC: Record<NotificationSoundKind, string> = {
 /** Max HTMLMediaElement volume — alerts should cut through a busy service floor. */
 const PLAYBACK_VOLUME = 1;
 
-const audioCache: Partial<Record<NotificationSoundKind, HTMLAudioElement>> = {};
-
 export function areNotificationSoundsEnabled(): boolean {
   if (typeof window === "undefined") {
     return true;
@@ -24,19 +22,11 @@ export function setNotificationSoundsEnabled(enabled: boolean): void {
   window.localStorage.setItem(ENABLED_KEY, enabled ? "1" : "0");
 }
 
-function getAudio(kind: NotificationSoundKind): HTMLAudioElement | null {
-  if (typeof window === "undefined" || !areNotificationSoundsEnabled()) {
-    return null;
-  }
-
-  if (!audioCache[kind]) {
-    const audio = new Audio(SOUND_SRC[kind]);
-    audio.preload = "auto";
-    audio.volume = PLAYBACK_VOLUME;
-    audioCache[kind] = audio;
-  }
-
-  return audioCache[kind] ?? null;
+function createAudio(kind: NotificationSoundKind): HTMLAudioElement {
+  const audio = new Audio(SOUND_SRC[kind]);
+  audio.preload = "auto";
+  audio.volume = PLAYBACK_VOLUME;
+  return audio;
 }
 
 /**
@@ -45,32 +35,26 @@ function getAudio(kind: NotificationSoundKind): HTMLAudioElement | null {
  */
 export function unlockNotificationSounds(): void {
   for (const kind of Object.keys(SOUND_SRC) as NotificationSoundKind[]) {
-    const audio = getAudio(kind);
-    if (!audio) {
-      continue;
-    }
-
+    const audio = createAudio(kind);
     audio.volume = 0;
     void audio
       .play()
       .then(() => {
         audio.pause();
         audio.currentTime = 0;
-        audio.volume = PLAYBACK_VOLUME;
       })
       .catch(() => {
-        audio.volume = PLAYBACK_VOLUME;
+        // Ignore — unlock retried on next gesture.
       });
   }
 }
 
 export function playNotificationSound(kind: NotificationSoundKind): void {
-  const audio = getAudio(kind);
-  if (!audio) {
+  if (typeof window === "undefined" || !areNotificationSoundsEnabled()) {
     return;
   }
 
-  audio.currentTime = 0;
+  const audio = createAudio(kind);
   void audio.play().catch(() => {
     // Still locked or tab muted — unlock runs on next user gesture.
   });
