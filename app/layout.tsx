@@ -13,10 +13,6 @@ export const metadata: Metadata = {
   title: "Tamu — Restaurant Operations",
   description:
     "Tamu is a multi-tenant restaurant booking engine. Live service, reservations, tables, and floor management in one place.",
-  icons: {
-    icon: [{ url: "/icon.png", type: "image/png" }],
-    apple: [{ url: "/icon.png", type: "image/png" }],
-  },
 };
 
 export default function RootLayout({
