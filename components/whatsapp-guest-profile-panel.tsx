@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { formatDateInTz } from "@/lib/format";
 import type { GuestProfile, WhatsappConversation } from "@/lib/types";
 import {
-  guestBookingLabel,
+  // guestBookingLabel,
   isReturningGuest,
   ReturningGuestBadge,
 } from "@/components/returning-guest-badge";

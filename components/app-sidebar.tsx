@@ -10,6 +10,8 @@ import { useAuthStore } from "@/lib/store/auth-store";
 import { useCommandPaletteStore } from "@/lib/store/command-palette-store";
 import { useMobileSidebarStore } from "@/lib/store/mobile-sidebar-store";
 import { useModKLabel } from "@/lib/hooks/use-mod-k-label";
+import { useWhatsappHasUnread } from "@/lib/hooks/use-whatsapp-inbox";
+import { useBookingNotificationStore } from "@/lib/store/booking-notification-store";
 import { initials } from "@/lib/format";
 import { APP_NAV_GROUPS } from "@/lib/nav-config";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
@@ -20,6 +22,15 @@ function AppSidebarBody({ onNavigate }: { onNavigate?: () => void }) {
   const tenant = useAuthStore((s) => s.tenant);
   const openSearch = useCommandPaletteStore((s) => s.setOpen);
   const modK = useModKLabel();
+  const { hasUnread: whatsappUnread } = useWhatsappHasUnread();
+  const hasNewBooking = useBookingNotificationStore((s) => s.hasNewBooking);
+  const clearNewBooking = useBookingNotificationStore((s) => s.clearNewBooking);
+
+  useEffect(() => {
+    if (pathname.startsWith("/live") || pathname.startsWith("/reservations")) {
+      clearNewBooking();
+    }
+  }, [pathname, clearNewBooking]);
 
   const afterInteract = () => {
     onNavigate?.();
@@ -101,8 +112,20 @@ function AppSidebarBody({ onNavigate }: { onNavigate?: () => void }) {
                       : "text-foreground hover:bg-muted",
                   )}
                 >
-                  <Icon className="h-4 w-4" />
-                  {item.label}
+                  <Icon className="h-4 w-4 shrink-0" />
+                  <span className="min-w-0 truncate">{item.label}</span>
+                  {item.href === "/messages" && whatsappUnread ? (
+                    <span className="ml-auto shrink-0 rounded bg-red-600 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
+                      New chat
+                    </span>
+                  ) : null}
+                  {(item.href === "/live" || item.href === "/reservations") &&
+                  hasNewBooking &&
+                  !pathname.startsWith(item.href) ? (
+                    <span className="ml-auto shrink-0 rounded bg-red-600 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
+                      New booking
+                    </span>
+                  ) : null}
                 </Link>
               );
             })}

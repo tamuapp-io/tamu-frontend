@@ -336,7 +336,7 @@ function MessagesPageContent() {
                               )}
                             >
                               <div className="flex flex-wrap items-end gap-x-2 gap-y-0.5">
-                                <span className="min-w-0 flex-1 whitespace-pre-wrap break-words">
+                                <span className="min-w-0 flex-1 whitespace-pre-wrap wrap-break-words">
                                   {msg.body.startsWith("[Image]") ? (
                                     <span className="italic opacity-90">{msg.body}</span>
                                   ) : (
