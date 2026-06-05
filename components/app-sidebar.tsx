@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
-import { ExternalLink, Search, Utensils } from "lucide-react";
+import { ExternalLink, Search } from "lucide-react";
+import { TamuLogo } from "@/components/tamu-brand";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { useCommandPaletteStore } from "@/lib/store/command-palette-store";
@@ -27,11 +28,8 @@ function AppSidebarBody({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <>
       <div className="mb-2 flex items-center gap-2 px-1 py-2">
-        <div className="grid h-7 w-7 place-items-center rounded-lg bg-foreground text-sm font-semibold text-primary-foreground">
-          <Utensils className="h-3.5 w-3.5" />
-        </div>
-        <span className="text-lg font-semibold">Tamu</span>
-        <span className="ml-1 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium tracking-wider text-muted-foreground">
+        <TamuLogo height={20} className="min-w-0 shrink" />
+        <span className="ml-auto rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium tracking-wider text-muted-foreground">
           BETA
         </span>
       </div>

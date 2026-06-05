@@ -5,6 +5,7 @@ import { use } from "react";
 import { Calendar, Check, ChevronLeft, ClipboardList, Clock, Users } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import Link from "next/link";
+import { TamuLogo } from "@/components/tamu-brand";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -155,7 +156,9 @@ function BookingShell({
           href="/login"
           className="mb-6 inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground"
         >
-          <ChevronLeft className="h-3 w-3" /> Tamu — for restaurants
+          <ChevronLeft className="h-3 w-3" />
+          <TamuLogo height={14} />
+          <span className="sr-only">Tamu — for restaurants</span>
         </Link>
         {tenant && (
           <>
@@ -180,8 +183,9 @@ function BookingShell({
 
       {children}
 
-      <footer className="mt-10 text-center text-[11px] text-muted-foreground">
-        Bookings powered by Tamu.
+      <footer className="mt-10 flex flex-col items-center gap-2 text-center text-[11px] text-muted-foreground">
+        <TamuLogo height={12} className="opacity-70" />
+        <span>Bookings powered by Tamu</span>
       </footer>
     </div>
   );
