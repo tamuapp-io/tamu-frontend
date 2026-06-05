@@ -13,6 +13,7 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { publicBookingApi } from "@/lib/api/public-booking";
 import { ApiError } from "@/lib/api/client";
+import { useAuthStore } from "@/lib/store/auth-store";
 import { cn } from "@/lib/utils";
 import { formatGuestAssignedTables, ordinal } from "@/lib/format";
 import { PhoneInput } from "@/components/phone-input";
@@ -149,17 +150,22 @@ function BookingShell({
   tenant: PublicTenant | null;
   children: React.ReactNode;
 }) {
+  const token = useAuthStore((s) => s.token);
+  const hydrated = useAuthStore((s) => s.hydrated);
+  const isStaffSession = hydrated && !!token;
+
   return (
     <div className="mx-auto max-w-2xl p-4 pt-10 sm:p-8">
       <header className="mb-8">
-        <Link
-          href="/login"
-          className="mb-6 inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground"
-        >
-          <ChevronLeft className="h-3 w-3" />
-          <TamuLogo height={14} />
-          <span className="sr-only">Tamu — for restaurants</span>
-        </Link>
+        {isStaffSession ? (
+          <Link
+            href="/live"
+            className="mb-6 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <ChevronLeft className="h-3.5 w-3.5" aria-hidden />
+            Back to app
+          </Link>
+        ) : null}
         {tenant && (
           <>
             <h1 className="text-3xl font-semibold tracking-tight">
