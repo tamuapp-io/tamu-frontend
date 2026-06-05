@@ -146,9 +146,9 @@ export function WhatsappGuestProfilePanel({
               ) : null}
 
               <div className="rounded-lg border border-border bg-muted/30 p-3">
-                <p className="mb-3 text-xs font-medium text-muted-foreground">
+                {/* <p className="mb-3 text-xs font-medium text-muted-foreground">
                   {guestBookingLabel(guest.total_bookings)}
-                </p>
+                </p> */}
                 <GuestStats guest={guest} />
               </div>
 
