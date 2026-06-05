@@ -29,6 +29,17 @@ export function useWhatsappConversations(enabled: boolean) {
   });
 }
 
+/** True when any inbox thread has unread inbound messages (for sidebar badge). */
+export function useWhatsappHasUnread() {
+  const status = useWhatsappStatus();
+  const configured = status.data?.configured === true;
+  const conversations = useWhatsappConversations(configured);
+
+  const hasUnread = (conversations.data ?? []).some((row) => row.unread_count > 0);
+
+  return { hasUnread, configured };
+}
+
 export function useWhatsappConversation(conversationId: string | null, enabled: boolean) {
   return useQuery({
     queryKey: ["whatsapp-conversation", conversationId],
