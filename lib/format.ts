@@ -57,6 +57,47 @@ export function formatTimeInTz(input: string | Date, timeZone: string): string {
   }).format(date);
 }
 
+/** WhatsApp-style relative label for chat/conversation list rows. */
+export function formatChatListTime(input: string | Date, timeZone: string): string {
+  const date = parseTemporalInput(input);
+  const ymdInTz = (instant: Date) =>
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(instant);
+
+  const today = ymdInTz(new Date());
+  const messageDay = ymdInTz(date);
+
+  if (messageDay === today) {
+    return formatTimeInTz(date, timeZone);
+  }
+
+  if (messageDay === shiftCalendarDaysYmd(today, -1, timeZone)) {
+    return "Yesterday";
+  }
+
+  const dayDiff = Math.round(
+    (Date.parse(`${today}T12:00:00.000Z`) - Date.parse(`${messageDay}T12:00:00.000Z`)) /
+      86_400_000,
+  );
+  if (dayDiff > 0 && dayDiff < 7) {
+    return new Intl.DateTimeFormat("en-GB", {
+      weekday: "short",
+      timeZone,
+    }).format(date);
+  }
+
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "2-digit",
+    timeZone,
+  }).format(date);
+}
+
 /** Long label for a calendar YYYY-MM-DD string in tenant TZ (avoid browser-local drift). */
 export function formatCalendarYmdLabel(ymd: string, timeZone: string): string {
   const [yy, mm, dd] = ymd.split("-").map((x) => Number.parseInt(x, 10));

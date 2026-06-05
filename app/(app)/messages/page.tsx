@@ -15,13 +15,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/toaster";
 import { ApiError } from "@/lib/api/client";
-import { formatTimeInTz } from "@/lib/format";
+import { formatChatListTime, formatTimeInTz } from "@/lib/format";
 import {
   useClearWhatsappConversation,
   useSendWhatsappMessage,
@@ -233,24 +232,26 @@ function MessagesPageContent() {
                             className="mt-0.5"
                           />
                           <div className="min-w-0 flex-1">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="truncate text-sm font-medium">
-                              {displayName(row)}
-                            </span>
-                            {row.unread_count > 0 ? (
-                              <Badge variant="default" className="shrink-0 tabular-nums">
-                                {row.unread_count}
-                              </Badge>
-                            ) : null}
-                          </div>
-                          <span className="truncate text-xs text-muted-foreground">
-                            {row.last_message_preview ?? displayPhone(row.phone_e164)}
-                          </span>
-                          {row.last_message_at ? (
-                            <span className="text-[11px] text-muted-foreground tabular-nums">
-                              {formatTimeInTz(row.last_message_at, timezone)}
-                            </span>
-                          ) : null}
+                            <div className="flex items-center gap-2">
+                              <span className="min-w-0 flex-1 truncate text-[15px] font-medium leading-tight">
+                                {displayName(row)}
+                              </span>
+                              {row.last_message_at ? (
+                                <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
+                                  {formatChatListTime(row.last_message_at, timezone)}
+                                </span>
+                              ) : null}
+                            </div>
+                            <div className="mt-0.5 flex items-center gap-2">
+                              <span className="min-w-0 flex-1 truncate text-[13px] leading-snug text-muted-foreground">
+                                {row.last_message_preview ?? displayPhone(row.phone_e164)}
+                              </span>
+                              {row.unread_count > 0 ? (
+                                <span className="flex size-[18px] shrink-0 items-center justify-center rounded-full bg-emerald-600 text-[10px] font-semibold tabular-nums text-white">
+                                  {row.unread_count > 99 ? "99+" : row.unread_count}
+                                </span>
+                              ) : null}
+                            </div>
                           </div>
                         </button>
                       </li>
@@ -299,7 +300,7 @@ function MessagesPageContent() {
                     </Button>
                   </header>
 
-                  <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-4">
+                  <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-[#e5ddd5] p-3 sm:p-4">
                     {thread.isLoading ? (
                       <p className="text-sm text-muted-foreground">
                         Loading conversation…
@@ -322,36 +323,40 @@ function MessagesPageContent() {
                         return (
                           <div
                             key={msg.id}
-                            className={cn("flex", outbound ? "justify-end" : "justify-start")}
+                            className={cn("mb-1 flex", outbound ? "justify-end" : "justify-start")}
                           >
                             <div
                               className={cn(
-                                "max-w-[85%] rounded-2xl px-3 py-2 text-sm whitespace-pre-wrap",
+                                "max-w-[85%] rounded-lg px-2 py-1.5 text-sm shadow-sm",
                                 outbound
-                                  ? "bg-primary text-primary-foreground"
-                                  : "bg-muted text-foreground",
+                                  ? "rounded-tr-none bg-[#d9fdd3] text-foreground"
+                                  : "rounded-tl-none bg-white text-foreground ring-1 ring-border/60",
                                 pending && "opacity-70",
                                 failed && "opacity-90 ring-1 ring-destructive/40",
                               )}
                             >
-                              {msg.body.startsWith("[Image]") ? (
-                                <span className="italic opacity-90">{msg.body}</span>
-                              ) : (
-                                msg.body
-                              )}
-                              <div
-                                className={cn(
-                                  "mt-1 text-[10px] tabular-nums opacity-70",
-                                  outbound ? "text-primary-foreground" : "text-muted-foreground",
-                                )}
-                              >
-                                {failed
-                                  ? "Failed to send"
-                                  : pending
-                                    ? "Sending…"
-                                    : msg.sent_at
-                                      ? formatTimeInTz(msg.sent_at, timezone)
-                                      : null}
+                              <div className="flex flex-wrap items-end gap-x-2 gap-y-0.5">
+                                <span className="min-w-0 flex-1 whitespace-pre-wrap break-words">
+                                  {msg.body.startsWith("[Image]") ? (
+                                    <span className="italic opacity-90">{msg.body}</span>
+                                  ) : (
+                                    msg.body
+                                  )}
+                                </span>
+                                <span
+                                  className={cn(
+                                    "shrink-0 self-end text-[10px] leading-none tabular-nums",
+                                    outbound ? "text-emerald-900/55" : "text-muted-foreground",
+                                  )}
+                                >
+                                  {failed
+                                    ? "Failed"
+                                    : pending
+                                      ? "…"
+                                      : msg.sent_at
+                                        ? formatTimeInTz(msg.sent_at, timezone)
+                                        : null}
+                                </span>
                               </div>
                             </div>
                           </div>
