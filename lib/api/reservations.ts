@@ -15,6 +15,8 @@ export interface ListReservationsQuery {
   table_id?: string;
   source?: ReservationSource;
   per_page?: number;
+  /** Default server sort is reserved_at asc; use -created_at for newest bookings first. */
+  sort?: "reserved_at" | "-reserved_at" | "created_at" | "-created_at" | "created_at_desc";
 }
 
 /**

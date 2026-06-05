@@ -8,6 +8,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { AppCommandPalette } from "@/components/app-command-palette";
 import { BrowserNotificationPrompt } from "@/components/browser-notification-prompt";
 import { NotificationSoundUnlock } from "@/components/notification-sound-unlock";
+import { BookingNotificationSubscriber } from "@/components/booking-notification-subscriber";
 import { ReservationRealtimeSubscriber } from "@/components/reservation-realtime-subscriber";
 import { WhatsappInboxNotificationSubscriber } from "@/components/whatsapp-inbox-notification-subscriber";
 
@@ -43,6 +44,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <AppSidebar />
       <div className="flex min-w-0 flex-1 flex-col">{children}</div>
       <ReservationRealtimeSubscriber />
+      <BookingNotificationSubscriber />
       <WhatsappInboxNotificationSubscriber />
       <NotificationSoundUnlock />
       <BrowserNotificationPrompt />
