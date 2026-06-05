@@ -1,6 +1,7 @@
 import { showBrowserNotification } from "@/lib/browser-notifications";
 import { playBookingNotificationSound } from "@/lib/notification-sounds";
 import { useBookingNotificationStore } from "@/lib/store/booking-notification-store";
+import { useStaffNotificationStore } from "@/lib/store/staff-notification-store";
 import { toast } from "@/components/ui/toaster";
 
 export interface ReservationBroadcastPayload {
@@ -55,6 +56,13 @@ export function notifyStaffNewBooking(payload: ReservationBroadcastPayload): voi
   const description = guest ? `${guest} · ${covers}` : covers;
 
   useBookingNotificationStore.getState().signalNewBooking();
+  useStaffNotificationStore.getState().add({
+    id: r.id ? `booking-${r.id}` : `booking-${Date.now()}`,
+    kind: "booking",
+    title,
+    body: description,
+    href: "/live",
+  });
   playBookingNotificationSound();
   toast.success(title, description);
 

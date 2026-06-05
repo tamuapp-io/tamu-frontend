@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { LogOut, Menu, Plus, User, X } from "lucide-react";
+import { AppNotificationsMenu } from "@/components/app-notifications-menu";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -81,6 +82,8 @@ export function AppTopbar({ breadcrumbs, primaryAction }: AppTopbarProps) {
       </nav>
 
       <div className="ml-auto flex items-center gap-3">
+        <AppNotificationsMenu />
+
         <span
           className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-[12px] font-medium text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300"
           title="Realtime updates land in Phase 2"

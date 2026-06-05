@@ -5,7 +5,7 @@ import {
   useWhatsappConversations,
   useWhatsappStatus,
 } from "@/lib/hooks/use-whatsapp-inbox";
-import { playWhatsappNotificationSound } from "@/lib/notification-sounds";
+import { notifyStaffWhatsappMessage } from "@/lib/whatsapp-notifications";
 import type { WhatsappConversation } from "@/lib/types";
 
 type ConversationSnapshot = {
@@ -20,6 +20,13 @@ function snapshotConversations(
   );
 }
 
+function conversationById(
+  rows: WhatsappConversation[],
+  id: string,
+): WhatsappConversation | undefined {
+  return rows.find((row) => row.id === id);
+}
+
 function activeConversationId(): string | null {
   if (typeof window === "undefined") {
     return null;
@@ -32,14 +39,13 @@ function activeConversationId(): string | null {
   return new URLSearchParams(window.location.search).get("conversation");
 }
 
-function shouldPlayForConversation(conversationId: string): boolean {
+function shouldNotifyForConversation(conversationId: string): boolean {
   const activeId = activeConversationId();
   return activeId == null || activeId !== conversationId;
 }
 
 /**
- * Polls the inbox and plays the WhatsApp message sound when unread inbound
- * messages increase (skips the initial snapshot and the open thread).
+ * Polls the inbox and alerts staff when unread inbound messages increase.
  */
 export function WhatsappInboxNotificationSubscriber() {
   const status = useWhatsappStatus();
@@ -63,26 +69,30 @@ export function WhatsappInboxNotificationSubscriber() {
     }
 
     const previous = previousRef.current ?? new Map();
-    let played = false;
+    let notified = false;
 
     for (const [id, row] of current) {
-      if (played) {
+      if (notified) {
         break;
       }
 
       const prior = previous.get(id);
+      const conversation = conversationById(rows, id);
+      if (!conversation) {
+        continue;
+      }
 
       if (!prior) {
-        if (row.unread > 0 && shouldPlayForConversation(id)) {
-          playWhatsappNotificationSound();
-          played = true;
+        if (row.unread > 0 && shouldNotifyForConversation(id)) {
+          notifyStaffWhatsappMessage(conversation);
+          notified = true;
         }
         continue;
       }
 
-      if (row.unread > prior.unread && shouldPlayForConversation(id)) {
-        playWhatsappNotificationSound();
-        played = true;
+      if (row.unread > prior.unread && shouldNotifyForConversation(id)) {
+        notifyStaffWhatsappMessage(conversation);
+        notified = true;
       }
     }
 
