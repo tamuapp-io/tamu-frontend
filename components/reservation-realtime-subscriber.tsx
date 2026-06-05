@@ -8,6 +8,7 @@ import Pusher from "pusher-js";
 /** laravel-echo v2 declares `Echo<T extends keyof Broadcaster>` — plain `Echo` needs a broadcaster arg at type level */
 type StaffReverbEcho = Echo<"reverb">;
 import { getBackendOrigin } from "@/lib/api/client";
+import { showBrowserNotification } from "@/lib/browser-notifications";
 import { toast } from "@/components/ui/toaster";
 import { reservationsKeys } from "@/lib/hooks/use-reservations";
 import { useAuthStore } from "@/lib/store/auth-store";
@@ -30,6 +31,27 @@ interface ReservationBroadcastPayload {
     guest?: { name?: string | null };
     party_size?: number;
   };
+}
+
+function notifyStaffNewBooking(payload: ReservationBroadcastPayload): void {
+  const r = payload.reservation;
+  if (!r) {
+    return;
+  }
+
+  const covers =
+    typeof r.party_size === "number" ? `${r.party_size} covers` : "New covers";
+  const guest = r.guest?.name?.trim();
+  const isOnline = r.source === "online";
+  const title = isOnline ? "New online booking" : "New reservation";
+  const description = guest ? `${guest} · ${covers}` : covers;
+
+  toast.success(title, description);
+
+  showBrowserNotification(title, {
+    body: description,
+    url: "/reservations",
+  });
 }
 
 /**
@@ -87,17 +109,7 @@ export function ReservationRealtimeSubscriber() {
       channel.listen(".ReservationBooked", (payload: ReservationBroadcastPayload) => {
         void queryClient.invalidateQueries({ queryKey: reservationsKeys.all });
         void queryClient.invalidateQueries({ queryKey: ["walk-ins"] });
-
-        const r = payload.reservation;
-        if (r?.source === "online") {
-          const covers =
-            typeof r.party_size === "number" ? `${r.party_size} covers` : "New covers";
-          const guest = r.guest?.name?.trim();
-          toast.success(
-            "New online booking",
-            guest ? `${guest} · ${covers}` : covers,
-          );
-        }
+        notifyStaffNewBooking(payload);
       });
     }, 1);
 

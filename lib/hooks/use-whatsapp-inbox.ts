@@ -7,7 +7,11 @@ import {
   openWhatsappConversation,
   sendWhatsappMessage,
 } from "@/lib/api/whatsapp";
-import type { WhatsappConversation, WhatsappConversationDetail } from "@/lib/types";
+import type {
+  WhatsappConversation,
+  WhatsappConversationDetail,
+  WhatsappMessage,
+} from "@/lib/types";
 
 export function useWhatsappStatus() {
   return useQuery({
@@ -31,9 +35,27 @@ export function useWhatsappConversation(conversationId: string | null, enabled: 
     queryFn: async () =>
       fetchWhatsappConversation(conversationId!).then((r) => r.data),
     enabled: enabled && conversationId != null,
-    refetchInterval: enabled && conversationId != null ? 10_000 : false,
+    refetchInterval: (query) => {
+      if (!enabled || conversationId == null) {
+        return false;
+      }
+
+      const hasPending = (query.state.data?.messages ?? []).some(
+        (m) =>
+          m.direction === "outbound" &&
+          (m.status === "pending" || m.status == null),
+      );
+
+      return hasPending ? 2_000 : 10_000;
+    },
   });
 }
+
+type SendContext = {
+  previous: WhatsappConversationDetail | undefined;
+  conversationId: string;
+  tempId: string;
+};
 
 export function useSendWhatsappMessage() {
   const qc = useQueryClient();
@@ -41,9 +63,66 @@ export function useSendWhatsappMessage() {
   return useMutation({
     mutationFn: ({ conversationId, body }: { conversationId: string; body: string }) =>
       sendWhatsappMessage(conversationId, body),
-    onSuccess: (_res, vars) => {
-      qc.invalidateQueries({ queryKey: ["whatsapp-conversation", vars.conversationId] });
+    onMutate: async ({ conversationId, body }) => {
+      await qc.cancelQueries({ queryKey: ["whatsapp-conversation", conversationId] });
+
+      const previous = qc.getQueryData<WhatsappConversationDetail>([
+        "whatsapp-conversation",
+        conversationId,
+      ]);
+
+      const tempId = `optimistic-${Date.now()}`;
+      const optimistic: WhatsappMessage = {
+        id: tempId,
+        conversation_id: conversationId,
+        direction: "outbound",
+        body,
+        status: "pending",
+        created_at: new Date().toISOString(),
+      };
+
+      if (previous) {
+        qc.setQueryData<WhatsappConversationDetail>(
+          ["whatsapp-conversation", conversationId],
+          {
+            ...previous,
+            messages: [...previous.messages, optimistic],
+          },
+        );
+      }
+
+      return { previous, conversationId, tempId } satisfies SendContext;
+    },
+    onSuccess: (res, vars, context) => {
+      qc.setQueryData<WhatsappConversationDetail>(
+        ["whatsapp-conversation", vars.conversationId],
+        (old) => {
+          if (!old) {
+            return old;
+          }
+
+          const tempId = context?.tempId;
+          const withoutTemp = tempId
+            ? old.messages.filter((m) => m.id !== tempId)
+            : old.messages;
+          const serverMsg = res.data;
+          const exists = withoutTemp.some((m) => m.id === serverMsg.id);
+
+          return {
+            ...old,
+            messages: exists ? withoutTemp : [...withoutTemp, serverMsg],
+          };
+        },
+      );
       qc.invalidateQueries({ queryKey: ["whatsapp-conversations"] });
+    },
+    onError: (_err, vars, context) => {
+      if (context?.previous) {
+        qc.setQueryData(
+          ["whatsapp-conversation", vars.conversationId],
+          context.previous,
+        );
+      }
     },
   });
 }

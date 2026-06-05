@@ -122,14 +122,13 @@ function MessagesPageContent() {
     const body = draft.trim();
     if (!activeId || body === "") return;
 
+    setDraft("");
+
     send.mutate(
       { conversationId: activeId, body },
       {
-        onSuccess: () => {
-          setDraft("");
-          toast.success("Message sent", "It may take a few seconds to appear on WhatsApp.");
-        },
         onError: (err) => {
+          setDraft(body);
           const flat =
             err instanceof ApiError && err.errors
               ? Object.values(err.errors).flat()[0]
@@ -303,6 +302,8 @@ function MessagesPageContent() {
                     ) : (
                       (thread.data?.messages ?? []).map((msg) => {
                         const outbound = msg.direction === "outbound";
+                        const pending = outbound && (msg.status === "pending" || msg.status == null);
+                        const failed = outbound && msg.status === "failed";
                         return (
                           <div
                             key={msg.id}
@@ -314,19 +315,25 @@ function MessagesPageContent() {
                                 outbound
                                   ? "bg-primary text-primary-foreground"
                                   : "bg-muted text-foreground",
+                                pending && "opacity-70",
+                                failed && "opacity-90 ring-1 ring-destructive/40",
                               )}
                             >
                               {msg.body}
-                              {msg.sent_at ? (
-                                <div
-                                  className={cn(
-                                    "mt-1 text-[10px] tabular-nums opacity-70",
-                                    outbound ? "text-primary-foreground" : "text-muted-foreground",
-                                  )}
-                                >
-                                  {formatTimeInTz(msg.sent_at, timezone)}
-                                </div>
-                              ) : null}
+                              <div
+                                className={cn(
+                                  "mt-1 text-[10px] tabular-nums opacity-70",
+                                  outbound ? "text-primary-foreground" : "text-muted-foreground",
+                                )}
+                              >
+                                {failed
+                                  ? "Failed to send"
+                                  : pending
+                                    ? "Sending…"
+                                    : msg.sent_at
+                                      ? formatTimeInTz(msg.sent_at, timezone)
+                                      : null}
+                              </div>
                             </div>
                           </div>
                         );
@@ -343,8 +350,7 @@ function MessagesPageContent() {
                       onChange={(e) => setDraft(e.target.value)}
                       placeholder="Type a message…"
                       rows={2}
-                      disabled={send.isPending}
-                      className="min-h-11 flex-1 resize-none rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50"
+                      className="min-h-11 flex-1 resize-none rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
                       onKeyDown={(e) => {
                         if (e.key === "Enter" && !e.shiftKey) {
                           e.preventDefault();
@@ -355,7 +361,7 @@ function MessagesPageContent() {
                     <Button
                       type="submit"
                       size="icon"
-                      disabled={send.isPending || draft.trim() === ""}
+                      disabled={draft.trim() === ""}
                       aria-label="Send message"
                     >
                       <Send className="size-4" />
