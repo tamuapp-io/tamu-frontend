@@ -1193,11 +1193,52 @@ export default function SettingsPage() {
                     <h2 className="text-sm font-semibold">WhatsApp inbox</h2>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Connect your restaurant&apos;s WasenderAPI session to receive
-                    guest replies and chat from the WhatsApp page.
+                    {whatsappInbox?.provider === "meta"
+                      ? "WhatsApp is connected via Meta Cloud API. Configure the webhook URL in your Meta app dashboard."
+                      : "Connect your restaurant's WasenderAPI session to receive guest replies and chat from the WhatsApp page."}
                   </p>
                 </div>
                 <div className="space-y-5 p-6">
+                  {whatsappInbox?.provider === "meta" ? (
+                    <>
+                      <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs text-emerald-900 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-100">
+                        Meta WhatsApp Cloud API is active for this environment.
+                        {whatsappInbox.session_connected === false
+                          ? " Connection check failed — verify your access token and phone number in Laravel Cloud env vars."
+                          : whatsappInbox.session_connected
+                            ? " Connection looks healthy."
+                            : null}
+                      </div>
+
+                      {whatsappInbox.webhook_url ? (
+                        <div className="space-y-2 rounded-lg border border-border bg-muted/20 p-4">
+                          <Label className="text-xs font-semibold">Meta webhook URL</Label>
+                          <p className="text-xs text-muted-foreground">
+                            In Meta Developer → WhatsApp → Configuration, subscribe to{" "}
+                            <code className="text-[11px]">messages</code> and paste this callback URL.
+                          </p>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <code className="max-w-full flex-1 truncate rounded bg-background px-2 py-1 text-[11px]">
+                              {whatsappInbox.webhook_url}
+                            </code>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={handleCopyWebhook}
+                            >
+                              <Copy className="mr-1.5 size-3.5" aria-hidden />
+                              Copy
+                            </Button>
+                          </div>
+                          <Button asChild variant="link" className="h-auto p-0 text-xs">
+                            <Link href="/messages">Open WhatsApp inbox →</Link>
+                          </Button>
+                        </div>
+                      ) : null}
+                    </>
+                  ) : (
+                    <>
                   {whatsappInbox?.configured && whatsappInbox.api_key_hint ? (
                     <p className="text-xs text-muted-foreground">
                       Current key:{" "}
@@ -1263,6 +1304,8 @@ export default function SettingsPage() {
                       </Button>
                     </div>
                   ) : null}
+                    </>
+                  )}
                 </div>
               </Card>
             </TabsContent>
