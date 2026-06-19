@@ -68,7 +68,10 @@ async function request<T>(
     /* invalid NEXT_PUBLIC_API_URL — skip */
   }
 
-  if (body !== undefined) {
+  // FormData must NOT set Content-Type manually — the browser adds the
+  // multipart boundary. JSON bodies are stringified and labeled below.
+  const isFormData = typeof FormData !== "undefined" && body instanceof FormData;
+  if (body !== undefined && !isFormData) {
     finalHeaders.set("Content-Type", "application/json");
   }
 
@@ -86,7 +89,12 @@ async function request<T>(
   const res = await fetch(buildUrl(path, query), {
     method,
     headers: finalHeaders,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    body:
+      body === undefined
+        ? undefined
+        : isFormData
+          ? (body as FormData)
+          : JSON.stringify(body),
     cache: "no-store",
     ...rest,
   });
@@ -125,6 +133,8 @@ export const api = {
   get: <T>(path: string, options?: RequestOptions) => request<T>("GET", path, options),
   post: <T>(path: string, body?: unknown, options?: RequestOptions) =>
     request<T>("POST", path, { ...options, body }),
+  upload: <T>(path: string, form: FormData, options?: RequestOptions) =>
+    request<T>("POST", path, { ...options, body: form }),
   put: <T>(path: string, body?: unknown, options?: RequestOptions) =>
     request<T>("PUT", path, { ...options, body }),
   patch: <T>(path: string, body?: unknown, options?: RequestOptions) =>
