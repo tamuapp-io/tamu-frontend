@@ -8,6 +8,8 @@ import {
   Grid2x2,
   MessageCircle,
   Settings,
+  Ticket,
+  TicketCheck,
   Users,
 } from "lucide-react";
 
@@ -33,6 +35,7 @@ export const APP_NAV_GROUPS: AppNavGroup[] = [
       { href: "/reservations", label: "Reservations", icon: Calendar, keywords: ["bookings"] },
       { href: "/walkins", label: "Walk-ins", icon: Users, keywords: ["walk in", "ledger"] },
       { href: "/waitlist", label: "Waitlist", icon: ClipboardList, keywords: ["queue"] },
+      { href: "/events", label: "Events", icon: Ticket, keywords: ["tickets", "ticketing"] },
       { href: "/messages", label: "WhatsApp", icon: MessageCircle, keywords: ["chat", "inbox"] },
     ],
   },
@@ -40,8 +43,10 @@ export const APP_NAV_GROUPS: AppNavGroup[] = [
     label: "Manage",
     items: [
       { href: "/tables", label: "Tables & Floor", icon: Grid2x2, keywords: ["floor plan", "layout"] },
-      { href: "/guests", label: "Guests", icon: CircleUserRound, keywords: ["crm"] },
-      { href: "/reports", label: "Reports", icon: ChartLine, keywords: ["analytics"] },
+      { href: "/guests", label: "Booking guests", icon: CircleUserRound, keywords: ["crm", "diners", "reservations"] },
+      { href: "/events/attendees", label: "Event guests", icon: Users, keywords: ["attendees", "ticket buyers", "tickets"] },
+      { href: "/reports", label: "Booking reports", icon: ChartLine, keywords: ["analytics", "reservations"] },
+      { href: "/reports/events", label: "Event reports", icon: TicketCheck, keywords: ["analytics", "tickets", "sales"] },
       { href: "/settings", label: "Settings", icon: Settings, keywords: ["preferences"] },
     ],
   },

@@ -213,6 +213,20 @@ export function ordinal(n: number): string {
   }
 }
 
+/** Format integer minor units (cents) into a localized currency string. */
+export function formatMoney(cents: number, currency = "IDR"): string {
+  const amount = (cents ?? 0) / 100;
+  try {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency,
+      maximumFractionDigits: currency === "IDR" ? 0 : 2,
+    }).format(amount);
+  } catch {
+    return `${currency} ${amount.toLocaleString()}`;
+  }
+}
+
 export function statusLabel(status: string) {
   switch (status) {
     case "no_show":

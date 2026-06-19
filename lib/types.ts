@@ -449,3 +449,283 @@ export interface ReportDailyRow {
   no_show: number;
   waitlisted: number;
 }
+
+/* ===== Event ticketing ===== */
+
+export type EventStatus = "draft" | "published" | "cancelled" | "completed";
+export type TicketStatus = "issued" | "checked_in" | "void" | "refunded";
+export type TicketOrderStatus = "pending" | "paid" | "cancelled" | "refunded";
+
+/**
+ * Free-form customizable event page config. The page builder renders an
+ * ordered list of typed blocks plus a theme; unknown block types are
+ * skipped so older configs keep rendering as the schema grows.
+ */
+export interface EventPageBlock {
+  type: "hero" | "text" | "image" | "highlights";
+  /** hero/text title or heading */
+  heading?: string;
+  /** text body / hero subtitle */
+  body?: string;
+  /** image block source */
+  image_url?: string;
+  /** highlights block bullet list */
+  items?: string[];
+}
+
+export interface EventPageConfig {
+  theme?: {
+    primary?: string;
+    accent?: string;
+    cover_image_url?: string;
+  };
+  blocks?: EventPageBlock[];
+}
+
+export interface TicketType {
+  id: string;
+  event_id: string;
+  name: string;
+  description?: string | null;
+  price_cents: number;
+  currency: string;
+  quantity_total: number | null;
+  quantity_sold: number;
+  remaining: number | null;
+  min_per_order: number;
+  max_per_order: number;
+  sales_start_at?: string | null;
+  sales_end_at?: string | null;
+  attributes?: Record<string, unknown> | null;
+  sort_order: number;
+  is_active: boolean;
+  on_sale: boolean;
+}
+
+export interface EventModel {
+  id: string;
+  tenant_id: string;
+  name: string;
+  slug: string;
+  description?: string | null;
+  venue?: string | null;
+  status: EventStatus;
+  starts_at: string | null;
+  ends_at: string | null;
+  scan_starts_at?: string | null;
+  scan_ends_at?: string | null;
+  page_config: EventPageConfig | null;
+  ticket_types?: TicketType[];
+  ticket_types_count?: number;
+  orders_count?: number;
+  created_at?: string;
+}
+
+export interface Ticket {
+  id: string;
+  ticket_order_id: string;
+  ticket_type_id: string | null;
+  code: string;
+  attendee_name?: string | null;
+  status: TicketStatus;
+  checked_in_at?: string | null;
+  ticket_type?: { id: string; name: string } | null;
+  created_at?: string;
+}
+
+export interface TicketOrder {
+  id: string;
+  event_id: string;
+  guest_id: string;
+  referral_id?: string | null;
+  source?: string | null;
+  status: TicketOrderStatus;
+  subtotal_cents: number;
+  total_cents: number;
+  currency: string;
+  tickets_count?: number;
+  checked_in_count?: number;
+  tickets?: Ticket[];
+  guest?: { id: string; name: string; email?: string | null; phone?: string | null };
+  referral?: { id: string; code: string; label?: string | null } | null;
+  event?: { id: string; name: string; slug: string; starts_at: string | null; venue?: string | null };
+  created_at?: string;
+}
+
+export interface EventReferral {
+  id: string;
+  event_id: string;
+  code: string;
+  label?: string | null;
+  owner_name?: string | null;
+  owner_contact?: string | null;
+  clicks: number;
+  orders_count: number;
+  revenue_cents: number;
+  is_active: boolean;
+  share_url?: string | null;
+  created_at?: string;
+}
+
+/* Public guest-facing event payload */
+export interface PublicTicketType {
+  id: string;
+  name: string;
+  description?: string | null;
+  price_cents: number;
+  currency: string;
+  remaining: number | null;
+  min_per_order: number;
+  max_per_order: number;
+  attributes?: Record<string, unknown> | null;
+  on_sale: boolean;
+}
+
+export interface PublicEvent {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string | null;
+  venue?: string | null;
+  starts_at: string | null;
+  ends_at: string | null;
+  page_config: EventPageConfig | null;
+  tenant_timezone?: string;
+  ticket_types: PublicTicketType[];
+}
+
+export interface EventSourceRow {
+  source: string;
+  orders: number;
+  tickets: number;
+  revenue_cents: number;
+}
+
+export interface EventReferralRow {
+  id: string;
+  event_id?: string;
+  code: string;
+  label?: string | null;
+  clicks: number;
+  orders_count: number;
+  revenue_cents: number;
+  conversion_percent: number;
+}
+
+export interface EventSeriesPoint {
+  date: string;
+  count: number;
+}
+
+export interface EventReport {
+  event: {
+    id: string;
+    name: string;
+    status: EventStatus;
+    starts_at: string | null;
+    scan_starts_at?: string | null;
+    scan_ends_at?: string | null;
+    timezone: string;
+  };
+  totals: {
+    orders: number;
+    tickets_sold: number;
+    revenue_cents: number;
+    checked_in: number;
+    no_show: number;
+    check_in_rate_percent: number;
+    unique_buyers: number;
+    capacity: number | null;
+    sell_through_percent: number | null;
+    avg_tickets_per_order: number;
+    visitors: number;
+    visitor_conversion_percent: number | null;
+  };
+  by_type: Array<{
+    ticket_type_id: string;
+    name: string;
+    price_cents: number;
+    sold: number;
+    checked_in: number;
+    revenue_cents: number;
+    quantity_total: number | null;
+  }>;
+  by_source: EventSourceRow[];
+  referrals: EventReferralRow[];
+  check_in_series: EventSeriesPoint[];
+  sales_series: EventSeriesPoint[];
+}
+
+export interface EventReportSummary {
+  timezone: string;
+  totals: {
+    events: number;
+    published_events: number;
+    orders: number;
+    tickets_sold: number;
+    revenue_cents: number;
+    checked_in: number;
+    no_show: number;
+    check_in_rate_percent: number;
+    unique_buyers: number;
+    visitors: number;
+  };
+  by_source: EventSourceRow[];
+  by_event: Array<{
+    event_id: string;
+    name: string;
+    status: EventStatus;
+    starts_at: string | null;
+    tickets_sold: number;
+    checked_in: number;
+    revenue_cents: number;
+  }>;
+  top_referrals: EventReferralRow[];
+  sales_series: EventSeriesPoint[];
+}
+
+/* ===== Event ticketing payloads ===== */
+
+export interface CreateEventPayload {
+  name: string;
+  starts_at: string;
+  ends_at?: string | null;
+  scan_starts_at?: string | null;
+  scan_ends_at?: string | null;
+  venue?: string | null;
+  description?: string | null;
+  status?: EventStatus;
+  page_config?: EventPageConfig | null;
+  slug?: string | null;
+}
+
+export type UpdateEventPayload = Partial<CreateEventPayload>;
+
+export interface TicketTypePayload {
+  name: string;
+  description?: string | null;
+  price_cents?: number;
+  currency?: string;
+  quantity_total?: number | null;
+  min_per_order?: number;
+  max_per_order?: number;
+  sales_start_at?: string | null;
+  sales_end_at?: string | null;
+  attributes?: Record<string, unknown> | null;
+  sort_order?: number;
+  is_active?: boolean;
+}
+
+export interface CreateReferralPayload {
+  label?: string;
+  code?: string;
+  owner_name?: string;
+  owner_contact?: string;
+}
+
+export interface PurchaseTicketsPayload {
+  guest: { name: string; email: string; phone?: string };
+  items: Array<{ ticket_type_id: string; quantity: number; attendee_names?: (string | null)[] }>;
+  referral_code?: string;
+  source?: string;
+}
