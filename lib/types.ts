@@ -274,7 +274,14 @@ export interface PublicCreateReservationPayload {
   reserved_at: string;
   party_size: number;
   duration_mins?: number;
-  guest: { name: string; email: string; phone?: string | null };
+  guest: {
+    name: string;
+    email: string;
+    phone?: string | null;
+    marketing_opt_in?: boolean;
+    birthday_month?: number | null;
+    birthday_day?: number | null;
+  };
   special_requests?: string;
   occasion?: string;
   custom_fields?: Record<string, unknown>;
@@ -305,7 +312,12 @@ export interface GuestProfile extends Guest {
   tags?: string[] | null;
   notes?: string | null;
   birthday_month?: number | null;
+  birthday_day?: number | null;
   is_blacklisted?: boolean;
+  whatsapp_consent?: boolean | null;
+  email_consent?: boolean | null;
+  marketing_consent_source?: string | null;
+  marketing_consent_at?: string | null;
   visit_count?: number;
   no_show_count?: number;
   /** total_bookings is also inherited via Guest, redeclared for clarity. */
@@ -728,4 +740,109 @@ export interface PurchaseTicketsPayload {
   items: Array<{ ticket_type_id: string; quantity: number; attendee_names?: (string | null)[] }>;
   referral_code?: string;
   source?: string;
+}
+
+/* ----------------------------------------------------------------------- */
+/* CRM                                                                      */
+/* ----------------------------------------------------------------------- */
+
+export type CrmProviderKey = "klaviyo" | "mailchimp";
+
+export type CrmSyncStatus = "queued" | "running" | "completed" | "failed";
+
+export interface CrmSegment {
+  key: string;
+  label: string;
+  description: string;
+  count: number;
+}
+
+export interface CrmSyncSummary {
+  id: string;
+  status: CrmSyncStatus;
+  segment: string;
+  total: number;
+  synced: number;
+  failed: number;
+  message?: string | null;
+  finished_at?: string | null;
+}
+
+export interface CrmConnection {
+  provider: CrmProviderKey;
+  configured: boolean;
+  account_label?: string | null;
+  api_key_hint?: string | null;
+  list_id?: string | null;
+  list_name?: string | null;
+  webhook_url?: string | null;
+  connected_at?: string | null;
+  last_sync?: CrmSyncSummary | null;
+}
+
+export interface CrmConnectionsMap {
+  klaviyo: CrmConnection;
+  mailchimp: CrmConnection;
+}
+
+export interface CrmOverviewStats {
+  contacts: number;
+  with_email: number;
+  with_phone: number;
+  whatsapp_consented: number;
+  email_consented: number;
+  regulars: number;
+  lapsed: number;
+  birthdays_this_month: number;
+  blacklisted: number;
+}
+
+export interface CrmOverview {
+  stats: CrmOverviewStats;
+  channels: { whatsapp_ready: boolean };
+  segments: CrmSegment[];
+  connections: CrmConnectionsMap;
+}
+
+export interface CrmAudience {
+  id: string;
+  name: string;
+}
+
+export type CampaignStatus = "draft" | "sending" | "sent" | "failed";
+
+export interface CampaignSummary {
+  id: string;
+  name: string;
+  channel: string;
+  segment: string;
+  message_body: string;
+  status: CampaignStatus;
+  audience_count: number;
+  sent_count: number;
+  failed_count: number;
+  skipped_count: number;
+  sent_at?: string | null;
+  created_at: string;
+}
+
+export interface CampaignPreview {
+  segment: string;
+  audience_count: number;
+  whatsapp_ready: boolean;
+}
+
+export interface CrmAutomationConfig {
+  enabled: boolean;
+  message: string;
+}
+
+export interface CrmWinbackConfig extends CrmAutomationConfig {
+  min_days: number;
+  cooldown_days: number;
+}
+
+export interface CrmAutomations {
+  birthday: CrmAutomationConfig;
+  winback: CrmWinbackConfig;
 }
