@@ -8,7 +8,11 @@ import {
   Contact,
   Grid2x2,
   Home,
+  LayoutDashboard,
+  Megaphone,
   MessageCircle,
+  Plug,
+  Repeat,
   Settings,
   Ticket,
   TicketCheck,
@@ -108,12 +112,27 @@ export const APP_SECTIONS: AppSection[] = [
   {
     id: "crm",
     label: "CRM",
-    description: "Unified guest profiles, segments, and campaigns.",
+    description: "Unified guest profiles, segments, and marketing sync.",
     icon: Contact,
-    home: "#",
-    disabled: true,
-    match: [],
-    groups: [],
+    home: "/crm",
+    match: ["/crm"],
+    groups: [
+      {
+        label: "Audience",
+        items: [
+          { href: "/crm", label: "Overview", icon: LayoutDashboard, keywords: ["dashboard", "crm", "segments"] },
+          { href: "/crm/contacts", label: "Contacts", icon: Contact, keywords: ["customers", "guests", "marketing"] },
+        ],
+      },
+      {
+        label: "Marketing",
+        items: [
+          { href: "/crm/campaigns", label: "Campaigns", icon: Megaphone, keywords: ["whatsapp", "broadcast", "blast", "send"] },
+          { href: "/crm/automations", label: "Automations", icon: Repeat, keywords: ["birthday", "win-back", "winback", "lifecycle"] },
+          { href: "/crm/connections", label: "Integrations", icon: Plug, keywords: ["klaviyo", "mailchimp", "email", "sync"] },
+        ],
+      },
+    ],
   },
 ];
 

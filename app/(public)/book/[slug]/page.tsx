@@ -9,6 +9,7 @@ import { TamuLogo } from "@/components/tamu-brand";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { publicBookingApi } from "@/lib/api/public-booking";
@@ -29,11 +30,23 @@ interface BookingState {
   date: string;
   party_size: number;
   slot: PublicAvailabilitySlot | null;
-  guest: { name: string; email: string; phone: string };
+  guest: {
+    name: string;
+    email: string;
+    phone: string;
+    marketing_opt_in: boolean;
+    birthday_month: number | null;
+    birthday_day: number | null;
+  };
   occasion: string;
   special_requests: string;
   custom_fields: Record<string, string>;
 }
+
+const MONTHS = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
@@ -65,7 +78,7 @@ export default function PublicBookingPage({
     date: todayISO(),
     party_size: 2,
     slot: null,
-    guest: { name: "", email: "", phone: "" },
+    guest: { name: "", email: "", phone: "", marketing_opt_in: false, birthday_month: null, birthday_day: null },
     occasion: "",
     special_requests: "",
     custom_fields: {},
@@ -616,6 +629,9 @@ function StepDetails({
           name: state.guest.name,
           email: state.guest.email,
           phone: state.guest.phone || undefined,
+          marketing_opt_in: state.guest.marketing_opt_in || undefined,
+          birthday_month: state.guest.birthday_month ?? undefined,
+          birthday_day: state.guest.birthday_day ?? undefined,
         },
         occasion: state.occasion || undefined,
         special_requests: state.special_requests || undefined,
@@ -710,6 +726,73 @@ function StepDetails({
             )}
           </div>
         </div>
+
+        <div className="space-y-1.5">
+          <Label>
+            Birthday <span className="text-muted-foreground">(optional)</span>
+          </Label>
+          <div className="grid grid-cols-2 gap-3">
+            <select
+              aria-label="Birthday month"
+              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm shadow-xs"
+              value={state.guest.birthday_month ?? ""}
+              onChange={(e) =>
+                setState((s) => ({
+                  ...s,
+                  guest: {
+                    ...s.guest,
+                    birthday_month: e.target.value ? Number(e.target.value) : null,
+                  },
+                }))
+              }
+            >
+              <option value="">Month</option>
+              {MONTHS.map((m, i) => (
+                <option key={m} value={i + 1}>
+                  {m}
+                </option>
+              ))}
+            </select>
+            <select
+              aria-label="Birthday day"
+              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm shadow-xs"
+              value={state.guest.birthday_day ?? ""}
+              onChange={(e) =>
+                setState((s) => ({
+                  ...s,
+                  guest: {
+                    ...s.guest,
+                    birthday_day: e.target.value ? Number(e.target.value) : null,
+                  },
+                }))
+              }
+            >
+              <option value="">Day</option>
+              {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+            </select>
+          </div>
+          <p className="text-xs text-muted-foreground">We&rsquo;ll send you a little something on your day.</p>
+        </div>
+
+        <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-border bg-muted/30 p-3">
+          <Checkbox
+            checked={state.guest.marketing_opt_in}
+            onCheckedChange={(v) =>
+              setState((s) => ({
+                ...s,
+                guest: { ...s.guest, marketing_opt_in: v === true },
+              }))
+            }
+            className="mt-0.5"
+          />
+          <span className="text-sm text-muted-foreground">
+            Keep me updated with offers and news from {tenant.name} via WhatsApp and email.
+          </span>
+        </label>
 
         {(tenant.custom_booking_fields ?? []).map((field) => (
           <div key={field.key} className="space-y-1.5">
