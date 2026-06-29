@@ -11,7 +11,7 @@ export default function HomePage() {
 
   useEffect(() => {
     if (!hydrated) return;
-    router.replace(token ? "/live" : "/login");
+    router.replace(token ? "/home" : "/login");
   }, [hydrated, token, router]);
 
   return (

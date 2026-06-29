@@ -3,17 +3,16 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
-import { ExternalLink, Search } from "lucide-react";
+import { ExternalLink, House, Search } from "lucide-react";
 import { TamuLogo } from "@/components/tamu-brand";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { useCommandPaletteStore } from "@/lib/store/command-palette-store";
 import { useMobileSidebarStore } from "@/lib/store/mobile-sidebar-store";
 import { useModKLabel } from "@/lib/hooks/use-mod-k-label";
-import { useWhatsappHasUnread } from "@/lib/hooks/use-whatsapp-inbox";
 import { useBookingNotificationStore } from "@/lib/store/booking-notification-store";
 import { initials } from "@/lib/format";
-import { APP_NAV_GROUPS } from "@/lib/nav-config";
+import { activeHrefForPath, getSectionForPath } from "@/lib/nav-config";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 
 function AppSidebarBody({ onNavigate }: { onNavigate?: () => void }) {
@@ -22,9 +21,10 @@ function AppSidebarBody({ onNavigate }: { onNavigate?: () => void }) {
   const tenant = useAuthStore((s) => s.tenant);
   const openSearch = useCommandPaletteStore((s) => s.setOpen);
   const modK = useModKLabel();
-  const { hasUnread: whatsappUnread } = useWhatsappHasUnread();
   const hasNewBooking = useBookingNotificationStore((s) => s.hasNewBooking);
   const clearNewBooking = useBookingNotificationStore((s) => s.clearNewBooking);
+
+  const section = getSectionForPath(pathname);
 
   useEffect(() => {
     if (pathname.startsWith("/live") || pathname.startsWith("/reservations")) {
@@ -36,14 +36,39 @@ function AppSidebarBody({ onNavigate }: { onNavigate?: () => void }) {
     onNavigate?.();
   };
 
+  // Section-less pages (Home, WhatsApp, Settings) render no scoped sidebar.
+  if (!section) return null;
+
+  const activeHref = activeHrefForPath(
+    section.groups.flatMap((g) => g.items),
+    pathname,
+  );
+
   return (
     <>
-      <div className="mb-2 flex items-center gap-2 px-1 py-2">
+      <Link
+        href="/home"
+        onClick={afterInteract}
+        aria-label="Tamu — back to Home"
+        className="mb-2 flex items-center gap-2 rounded-lg px-1 py-2 transition-colors hover:bg-muted"
+      >
         <TamuLogo height={20} className="min-w-0 shrink" />
         <span className="ml-auto rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium tracking-wider text-muted-foreground">
           BETA
         </span>
-      </div>
+      </Link>
+
+      <Link
+        href="/home"
+        onClick={afterInteract}
+        className="flex h-9 items-center gap-2 rounded-lg px-2.5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+      >
+        <House className="h-4 w-4 shrink-0" aria-hidden />
+        Home
+        <span className="ml-auto rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+          {section.label}
+        </span>
+      </Link>
 
       <button
         type="button"
@@ -53,7 +78,7 @@ function AppSidebarBody({ onNavigate }: { onNavigate?: () => void }) {
         }}
         aria-haspopup="dialog"
         aria-label={`Open search (${modK})`}
-        className="flex h-9 items-center gap-2 rounded-lg border border-border bg-muted/40 px-2.5 text-[13px] text-muted-foreground transition-colors hover:bg-muted"
+        className="mt-2 flex h-9 items-center gap-2 rounded-lg border border-border bg-muted/40 px-2.5 text-[13px] text-muted-foreground transition-colors hover:bg-muted"
       >
         <Search className="h-4 w-4 shrink-0" aria-hidden />
         Search…
@@ -75,12 +100,12 @@ function AppSidebarBody({ onNavigate }: { onNavigate?: () => void }) {
         </Link>
       ) : null}
 
-      {APP_NAV_GROUPS.map((group) => (
+      {section.groups.map((group) => (
         <div key={group.label} className="mt-3">
           <div className="px-2 pb-1 label-cap">{group.label}</div>
           <div className="flex flex-col gap-0.5">
             {group.items.map((item) => {
-              const active = !item.disabled && pathname.startsWith(item.href);
+              const active = !item.disabled && item.href === activeHref;
               const Icon = item.icon;
 
               if (item.disabled) {
@@ -114,11 +139,6 @@ function AppSidebarBody({ onNavigate }: { onNavigate?: () => void }) {
                 >
                   <Icon className="h-4 w-4 shrink-0" />
                   <span className="min-w-0 truncate">{item.label}</span>
-                  {item.href === "/messages" && whatsappUnread ? (
-                    <span className="ml-auto shrink-0 rounded bg-red-600 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
-                      New chat
-                    </span>
-                  ) : null}
                   {(item.href === "/live" || item.href === "/reservations") &&
                   hasNewBooking &&
                   !pathname.startsWith(item.href) ? (
@@ -157,6 +177,8 @@ export function AppSidebar() {
   const mobileOpen = useMobileSidebarStore((s) => s.open);
   const setMobileOpen = useMobileSidebarStore((s) => s.setOpen);
 
+  const hasSection = getSectionForPath(pathname) !== null;
+
   useEffect(() => {
     setMobileOpen(false);
   }, [pathname, setMobileOpen]);
@@ -170,6 +192,9 @@ export function AppSidebar() {
     closeWhenDesktop();
     return () => mq.removeEventListener("change", closeWhenDesktop);
   }, [setMobileOpen]);
+
+  // No scoped sidebar on section-less pages (Home, WhatsApp, Settings).
+  if (!hasSection) return null;
 
   return (
     <>
