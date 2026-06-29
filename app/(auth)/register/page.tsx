@@ -33,7 +33,7 @@ export default function RegisterPage() {
   }, []);
 
   useEffect(() => {
-    if (hydrated && token) router.replace("/live");
+    if (hydrated && token) router.replace("/home");
   }, [hydrated, token, router]);
 
   const fieldErrors =
@@ -58,7 +58,7 @@ export default function RegisterPage() {
         timezone: timezone.trim(),
       });
       toast.success("Restaurant ready", "We've created your tenant — let's get set up.");
-      router.replace("/live");
+      router.replace("/home");
     } catch {
       // shown inline
     }

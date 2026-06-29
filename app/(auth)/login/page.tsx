@@ -21,7 +21,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
 
   useEffect(() => {
-    if (hydrated && token) router.replace("/live");
+    if (hydrated && token) router.replace("/home");
   }, [hydrated, token, router]);
 
   const fieldErrors = (login.error instanceof ApiError && login.error.errors) || {};
@@ -39,7 +39,7 @@ export default function LoginPage() {
         device_name: "tamu-dashboard",
       });
       toast.success("Welcome back");
-      router.replace("/live");
+      router.replace("/home");
     } catch {
       // shown inline
     }

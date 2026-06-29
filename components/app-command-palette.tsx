@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { APP_NAV_GROUPS, type AppNavItem } from "@/lib/nav-config";
+import { APP_SECTIONS, GLOBAL_NAV_ITEMS, type AppNavItem } from "@/lib/nav-config";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { useCommandPaletteStore } from "@/lib/store/command-palette-store";
 
@@ -53,10 +53,17 @@ export function AppCommandPalette() {
 
   const rows = useMemo<CommandRow[]>(() => {
     const list: CommandRow[] = [];
-    for (const g of APP_NAV_GROUPS) {
-      for (const item of g.items) {
-        if (item.disabled) continue;
-        list.push({ ...item, group: g.label });
+    for (const item of GLOBAL_NAV_ITEMS) {
+      if (item.disabled) continue;
+      list.push({ ...item, group: "General" });
+    }
+    for (const section of APP_SECTIONS) {
+      if (section.disabled) continue;
+      for (const g of section.groups) {
+        for (const item of g.items) {
+          if (item.disabled) continue;
+          list.push({ ...item, group: section.label });
+        }
       }
     }
     if (tenant?.slug) {

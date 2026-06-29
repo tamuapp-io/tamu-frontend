@@ -1,8 +1,10 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { LogOut, Menu, Plus, User, X } from "lucide-react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { LogOut, Menu, MessageCircle, Plus, Settings as SettingsIcon, User, X } from "lucide-react";
 import { AppNotificationsMenu } from "@/components/app-notifications-menu";
+import { TamuLogo } from "@/components/tamu-brand";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -15,6 +17,8 @@ import {
 import { useLogout } from "@/lib/hooks/use-auth";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { useMobileSidebarStore } from "@/lib/store/mobile-sidebar-store";
+import { useWhatsappHasUnread } from "@/lib/hooks/use-whatsapp-inbox";
+import { getSectionForPath } from "@/lib/nav-config";
 import { initials } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -33,6 +37,14 @@ export function AppTopbar({ breadcrumbs, primaryAction }: AppTopbarProps) {
   const toggleMobileSidebar = useMobileSidebarStore((s) => s.toggle);
   const logout = useLogout();
   const router = useRouter();
+  const pathname = usePathname();
+  const { hasUnread: whatsappUnread } = useWhatsappHasUnread();
+
+  // The mobile menu only exists where a scoped sidebar is rendered.
+  const hasSectionSidebar = getSectionForPath(pathname) !== null;
+  const onHome = pathname === "/home";
+  const onWhatsapp = pathname.startsWith("/messages");
+  const onSettings = pathname.startsWith("/settings");
 
   const handleLogout = async () => {
     await logout.mutateAsync();
@@ -41,32 +53,41 @@ export function AppTopbar({ breadcrumbs, primaryAction }: AppTopbarProps) {
 
   return (
     <header className="flex h-14 items-center gap-2 border-b border-border bg-background px-4 sm:gap-3 sm:px-6">
-      <Button
-        type="button"
-        variant="outline"
-        size="icon"
-        className={cn(
-          "shrink-0 transition-[box-shadow,background-color] lg:hidden",
-          mobileSidebarOpen && "border-foreground/20 bg-muted",
-        )}
-        aria-label={mobileSidebarOpen ? "Close navigation menu" : "Open navigation menu"}
-        aria-expanded={mobileSidebarOpen}
-        aria-controls="mobile-app-sidebar"
-        onClick={() => toggleMobileSidebar()}
-      >
-        {mobileSidebarOpen ? (
-          <X className="h-5 w-5" aria-hidden />
-        ) : (
-          <Menu className="h-5 w-5" aria-hidden />
-        )}
-      </Button>
+      {hasSectionSidebar && (
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className={cn(
+            "shrink-0 transition-[box-shadow,background-color] lg:hidden",
+            mobileSidebarOpen && "border-foreground/20 bg-muted",
+          )}
+          aria-label={mobileSidebarOpen ? "Close navigation menu" : "Open navigation menu"}
+          aria-expanded={mobileSidebarOpen}
+          aria-controls="mobile-app-sidebar"
+          onClick={() => toggleMobileSidebar()}
+        >
+          {mobileSidebarOpen ? (
+            <X className="h-5 w-5" aria-hidden />
+          ) : (
+            <Menu className="h-5 w-5" aria-hidden />
+          )}
+        </Button>
+      )}
       <nav
         aria-label="Breadcrumb"
         className="flex min-w-0 flex-1 items-center gap-2 truncate text-sm"
       >
-        {breadcrumbs.map((crumb, i) => (
+        <Link
+          href="/home"
+          aria-label="Tamu — Home"
+          className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"
+        >
+          {onHome ? <TamuLogo height={20} /> : "Home"}
+        </Link>
+        {breadcrumbs.map((crumb) => (
           <span key={crumb.label} className="flex items-center gap-2">
-            {i > 0 && <span className="text-muted-foreground">/</span>}
+            <span className="text-muted-foreground">/</span>
             <span
               className={
                 crumb.current
@@ -82,6 +103,36 @@ export function AppTopbar({ breadcrumbs, primaryAction }: AppTopbarProps) {
       </nav>
 
       <div className="ml-auto flex items-center gap-3">
+        <Link
+          href="/messages"
+          aria-label="WhatsApp Chat"
+          className={cn(
+            "relative inline-flex h-9 items-center gap-2 rounded-lg border border-border px-2.5 text-[13px] font-medium transition-colors hover:bg-muted",
+            onWhatsapp ? "bg-muted text-foreground" : "text-foreground",
+          )}
+        >
+          <MessageCircle className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+          <span className="hidden sm:inline">WhatsApp Chat</span>
+          {whatsappUnread ? (
+            <span
+              className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full border-2 border-background bg-red-600"
+              aria-hidden
+            />
+          ) : null}
+        </Link>
+
+        <Link
+          href="/settings"
+          aria-label="Settings"
+          className={cn(
+            "inline-flex h-9 items-center gap-2 rounded-lg border border-border px-2.5 text-[13px] font-medium transition-colors hover:bg-muted",
+            onSettings ? "bg-muted text-foreground" : "text-foreground",
+          )}
+        >
+          <SettingsIcon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+          <span className="hidden sm:inline">Settings</span>
+        </Link>
+
         <AppNotificationsMenu />
 
         <span
