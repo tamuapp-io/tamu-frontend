@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { AppTopbar } from "@/components/app-topbar";
 import { useAuthStore } from "@/lib/store/auth-store";
-import { APP_SECTIONS } from "@/lib/nav-config";
+import { APP_SECTIONS, sectionAllowedForRole } from "@/lib/nav-config";
 import { cn } from "@/lib/utils";
 
 export default function HomeHubPage() {
@@ -12,6 +12,7 @@ export default function HomeHubPage() {
   const tenant = useAuthStore((s) => s.tenant);
 
   const firstName = user?.name?.split(" ")[0];
+  const sections = APP_SECTIONS.filter((s) => sectionAllowedForRole(s, user?.role));
 
   return (
     <>
@@ -28,7 +29,7 @@ export default function HomeHubPage() {
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {APP_SECTIONS.map((section) => {
+          {sections.map((section) => {
             const Icon = section.icon;
 
             const inner = (

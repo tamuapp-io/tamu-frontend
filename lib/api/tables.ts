@@ -1,6 +1,7 @@
 import { api } from "@/lib/api/client";
 import type {
   CreateTablePayload,
+  FloorSection,
   ItemEnvelope,
   ListEnvelope,
   Table,
@@ -33,4 +34,15 @@ export const tablesApi = {
       rotation?: number;
     }>,
   ) => api.post<ListEnvelope<Table>>("tables/positions", { positions }),
+};
+
+export const floorSectionsApi = {
+  list: () => api.get<ListEnvelope<FloorSection>>("tables/sections"),
+  create: (name: string) =>
+    api.post<ItemEnvelope<FloorSection>>("tables/sections", { name }),
+  update: (id: string, payload: { name?: string; is_active?: boolean }) =>
+    api.patch<ItemEnvelope<FloorSection>>(`tables/sections/${id}`, payload),
+  remove: (id: string) => api.delete<void>(`tables/sections/${id}`),
+  reorder: (ids: string[]) =>
+    api.post<ListEnvelope<FloorSection>>("tables/sections/reorder", { ids }),
 };

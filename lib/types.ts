@@ -846,3 +846,15 @@ export interface CrmAutomations {
   birthday: CrmAutomationConfig;
   winback: CrmWinbackConfig;
 }
+
+/* ----------------------------------------------------------------------- */
+/* Floor sections (customizable table areas)                               */
+/* ----------------------------------------------------------------------- */
+
+export interface FloorSection {
+  id: string;
+  name: string;
+  display_order: number;
+  is_active: boolean;
+  tables_count?: number;
+}

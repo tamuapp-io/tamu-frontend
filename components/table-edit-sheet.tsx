@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,9 +28,11 @@ interface TableEditSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   table: Table | null;
+  /** Managed section names to choose from (falls back to defaults). */
+  sections?: string[];
 }
 
-const SECTIONS = ["Indoor", "Outdoor", "Private", "Bar"];
+const DEFAULT_SECTIONS = ["Indoor", "Outdoor", "Private", "Bar"];
 const SHAPES: { value: TableShape; label: string }[] = [
   { value: "round", label: "Round" },
   { value: "rectangle", label: "Rectangle" },
@@ -53,13 +55,14 @@ const initialForm: CreateTablePayload = {
   priority: 5,
 };
 
-export function TableEditSheet({ open, onOpenChange, table }: TableEditSheetProps) {
+export function TableEditSheet({ open, onOpenChange, table, sections }: TableEditSheetProps) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full max-w-[480px] p-0">
         <TableEditForm
           key={table?.id ?? "new"}
           table={table}
+          sections={sections}
           onClose={() => onOpenChange(false)}
         />
       </SheetContent>
@@ -69,9 +72,11 @@ export function TableEditSheet({ open, onOpenChange, table }: TableEditSheetProp
 
 function TableEditForm({
   table,
+  sections,
   onClose,
 }: {
   table: Table | null;
+  sections?: string[];
   onClose: () => void;
 }) {
   const create = useCreateTable();
@@ -108,6 +113,17 @@ function TableEditForm({
   }
 
   const localValid = form.max_capacity >= form.min_capacity && form.name.trim();
+
+  // Managed sections (falls back to defaults), always including the table's
+  // current section so an existing value never disappears from the picker.
+  const sectionOptions = useMemo(() => {
+    const base = sections && sections.length > 0 ? sections : DEFAULT_SECTIONS;
+    const current = form.section?.trim();
+    if (current && !base.some((s) => s.toLowerCase() === current.toLowerCase())) {
+      return [current, ...base];
+    }
+    return base;
+  }, [sections, form.section]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -190,7 +206,7 @@ function TableEditForm({
           <div className="space-y-1.5">
             <Label>Section</Label>
             <div className="inline-flex flex-wrap rounded-lg bg-muted p-1">
-              {SECTIONS.map((s) => (
+              {sectionOptions.map((s) => (
                 <button
                   type="button"
                   key={s}

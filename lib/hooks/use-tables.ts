@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { tablesApi, type ListTablesQuery } from "@/lib/api/tables";
+import { floorSectionsApi, tablesApi, type ListTablesQuery } from "@/lib/api/tables";
 import type { CreateTablePayload, Table, UpdateTablePayload } from "@/lib/types";
 
 export const tablesKeys = {
@@ -41,6 +41,45 @@ export function useDeleteTable() {
     mutationFn: async (id: string) => tablesApi.remove(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: tablesKeys.all }),
   });
+}
+
+/* ----- Floor sections ----- */
+
+export const floorSectionsKey = ["floor-sections"] as const;
+
+export function useFloorSections() {
+  return useQuery({
+    queryKey: floorSectionsKey,
+    queryFn: async () => (await floorSectionsApi.list()).data,
+  });
+}
+
+export function useFloorSectionMutations() {
+  const qc = useQueryClient();
+  const invalidate = () => {
+    void qc.invalidateQueries({ queryKey: floorSectionsKey });
+    void qc.invalidateQueries({ queryKey: tablesKeys.all });
+  };
+
+  const create = useMutation({
+    mutationFn: (name: string) => floorSectionsApi.create(name),
+    onSuccess: invalidate,
+  });
+  const rename = useMutation({
+    mutationFn: ({ id, name }: { id: string; name: string }) =>
+      floorSectionsApi.update(id, { name }),
+    onSuccess: invalidate,
+  });
+  const remove = useMutation({
+    mutationFn: (id: string) => floorSectionsApi.remove(id),
+    onSuccess: invalidate,
+  });
+  const reorder = useMutation({
+    mutationFn: (ids: string[]) => floorSectionsApi.reorder(ids),
+    onSuccess: invalidate,
+  });
+
+  return { create, rename, remove, reorder };
 }
 
 type TablePositionsPayload = Array<{
