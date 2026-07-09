@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Plus, Search, Trash2 } from "lucide-react";
+import { LayoutGrid, Plus, Search, Trash2 } from "lucide-react";
 import { AppTopbar } from "@/components/app-topbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { KpiStat } from "@/components/kpi-stat";
 import { FloorPlanPreview } from "@/components/floor-plan-preview";
 import { TableEditSheet } from "@/components/table-edit-sheet";
+import { ManageSectionsDialog } from "@/components/manage-sections-dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,7 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { useTablesList, useDeleteTable } from "@/lib/hooks/use-tables";
+import { useTablesList, useDeleteTable, useFloorSections } from "@/lib/hooks/use-tables";
 import type { Table } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { ApiError } from "@/lib/api/client";
@@ -41,10 +42,12 @@ const SHAPE_GLYPH: Record<string, { icon: string; rounded: string }> = {
 
 export default function TablesPage() {
   const { data: tables = [], isPending } = useTablesList({ per_page: 200 });
+  const { data: floorSections = [] } = useFloorSections();
   const deleteTable = useDeleteTable();
 
   const [editingTable, setEditingTable] = useState<Table | null>(null);
   const [editOpen, setEditOpen] = useState(false);
+  const [manageSectionsOpen, setManageSectionsOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<Table | null>(null);
   const [search, setSearch] = useState("");
   const [sectionFilter, setSectionFilter] = useState<string>("all");
@@ -87,13 +90,25 @@ export default function TablesPage() {
     };
   }, [tables]);
 
+  // Managed sections first (in their configured order), then any legacy
+  // section names still present on tables but not in the managed list.
   const sections = useMemo(() => {
+    const ordered: string[] = [];
     const seen = new Set<string>();
-    for (const t of tables) {
-      if (t.section) seen.add(t.section);
+    for (const s of floorSections) {
+      if (!seen.has(s.name)) {
+        ordered.push(s.name);
+        seen.add(s.name);
+      }
     }
-    return Array.from(seen).sort();
-  }, [tables]);
+    for (const t of tables) {
+      if (t.section && !seen.has(t.section)) {
+        ordered.push(t.section);
+        seen.add(t.section);
+      }
+    }
+    return ordered;
+  }, [floorSections, tables]);
 
   const filtered = useMemo(() => {
     return tables.filter((t) => {
@@ -231,6 +246,14 @@ export default function TablesPage() {
                     <SelectItem value="maintenance">Maintenance</SelectItem>
                   </SelectContent>
                 </Select>
+                <Button
+                  variant="outline"
+                  size="md"
+                  className="ml-auto"
+                  onClick={() => setManageSectionsOpen(true)}
+                >
+                  <LayoutGrid className="h-4 w-4" /> Manage sections
+                </Button>
               </div>
 
               <div className="grid grid-cols-[80px_1fr_120px_100px_84px_70px_80px] items-center gap-3 border-b border-border bg-muted/20 px-4 py-3 label-cap">
@@ -351,6 +374,12 @@ export default function TablesPage() {
         open={editOpen}
         onOpenChange={setEditOpen}
         table={editingTable}
+        sections={floorSections.map((s) => s.name)}
+      />
+
+      <ManageSectionsDialog
+        open={manageSectionsOpen}
+        onOpenChange={setManageSectionsOpen}
       />
 
       <AlertDialog

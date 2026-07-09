@@ -52,6 +52,8 @@ export type AppSection = {
   home: string;
   /** Coming-soon sections render disabled on the Home hub. */
   disabled?: boolean;
+  /** If set, only users with one of these roles may see/enter the section. */
+  roles?: string[];
   match: string[];
   groups: AppNavGroup[];
 };
@@ -115,6 +117,7 @@ export const APP_SECTIONS: AppSection[] = [
     description: "Unified guest profiles, segments, and marketing sync.",
     icon: Contact,
     home: "/crm",
+    roles: ["owner", "manager"],
     match: ["/crm"],
     groups: [
       {
@@ -145,6 +148,12 @@ export const GLOBAL_NAV_ITEMS: AppNavItem[] = [
   { href: "/messages", label: "WhatsApp Chat", icon: MessageCircle, keywords: ["chat", "inbox", "whatsapp", "messages"] },
   { href: "/settings", label: "Settings", icon: Settings, keywords: ["preferences", "config"] },
 ];
+
+/** Whether a user with `role` may see/enter `section`. */
+export function sectionAllowedForRole(section: AppSection, role?: string | null): boolean {
+  if (!section.roles) return true;
+  return role != null && section.roles.includes(role);
+}
 
 /** Returns true when `pathname` is at, or nested under, `prefix`. */
 function matchesPrefix(pathname: string, prefix: string): boolean {
