@@ -845,12 +845,13 @@ function StepDetails({
   onBack: () => void;
   onSuccess: (r: PublicReservation) => void;
 }) {
+  const isSpa = tenant.booking_strategy === "spa";
+
   const create = useMutation({
     mutationFn: () => {
       const customFields = Object.fromEntries(
         Object.entries(state.custom_fields).filter(([, v]) => v.trim() !== ""),
       );
-      const isSpa = tenant.booking_strategy === "spa";
 
       return publicBookingApi.create(slug, {
         reserved_at: state.slot!.reserved_at_utc,
@@ -868,7 +869,7 @@ function StepDetails({
           birthday_month: state.guest.birthday_month ?? undefined,
           birthday_day: state.guest.birthday_day ?? undefined,
         },
-        occasion: state.occasion || undefined,
+        occasion: !isSpa && state.occasion ? state.occasion : undefined,
         special_requests: state.special_requests || undefined,
         custom_fields:
           Object.keys(customFields).length > 0 ? customFields : undefined,
@@ -1085,25 +1086,31 @@ function StepDetails({
           </div>
         ))}
 
-        <div className="space-y-1.5">
-          <Label htmlFor="g-occ">
-            Special occasion{" "}
-            <span className="text-muted-foreground">(optional)</span>
-          </Label>
-          <Input
-            id="g-occ"
-            value={state.occasion}
-            onChange={(e) =>
-              setState((s) => ({ ...s, occasion: e.target.value }))
-            }
-            placeholder="Birthday, anniversary…"
-          />
-        </div>
+        {!isSpa && (
+          <div className="space-y-1.5">
+            <Label htmlFor="g-occ">
+              Special occasion{" "}
+              <span className="text-muted-foreground">(optional)</span>
+            </Label>
+            <Input
+              id="g-occ"
+              value={state.occasion}
+              onChange={(e) =>
+                setState((s) => ({ ...s, occasion: e.target.value }))
+              }
+              placeholder="Birthday, anniversary…"
+            />
+          </div>
+        )}
 
         <div className="space-y-1.5">
           <Label htmlFor="g-req">
             Special requests{" "}
-            <span className="text-muted-foreground">(optional)</span>
+            <span className="text-muted-foreground">
+              {isSpa
+                ? "(symptoms, pains you're struggling with, etc.)"
+                : "(optional)"}
+            </span>
           </Label>
           <textarea
             id="g-req"
@@ -1112,6 +1119,11 @@ function StepDetails({
             value={state.special_requests}
             onChange={(e) =>
               setState((s) => ({ ...s, special_requests: e.target.value }))
+            }
+            placeholder={
+              isSpa
+                ? "e.g. lower back pain, shoulder tension, areas to avoid…"
+                : undefined
             }
             className="w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
