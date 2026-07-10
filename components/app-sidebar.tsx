@@ -12,7 +12,7 @@ import { useMobileSidebarStore } from "@/lib/store/mobile-sidebar-store";
 import { useModKLabel } from "@/lib/hooks/use-mod-k-label";
 import { useBookingNotificationStore } from "@/lib/store/booking-notification-store";
 import { initials } from "@/lib/format";
-import { activeHrefForPath, getSectionForPath } from "@/lib/nav-config";
+import { activeHrefForPath, getSectionForPath, navItemAllowedForCategory } from "@/lib/nav-config";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 
 function AppSidebarBody({ onNavigate }: { onNavigate?: () => void }) {
@@ -39,8 +39,17 @@ function AppSidebarBody({ onNavigate }: { onNavigate?: () => void }) {
   // Section-less pages (Home, WhatsApp, Settings) render no scoped sidebar.
   if (!section) return null;
 
+  // Hide items that don't apply to this tenant's category (e.g. a spa doesn't
+  // see Live service / Walk-ins / Tables), dropping any group left empty.
+  const visibleGroups = section.groups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => navItemAllowedForCategory(item, tenant?.category)),
+    }))
+    .filter((group) => group.items.length > 0);
+
   const activeHref = activeHrefForPath(
-    section.groups.flatMap((g) => g.items),
+    visibleGroups.flatMap((g) => g.items),
     pathname,
   );
 
@@ -100,7 +109,7 @@ function AppSidebarBody({ onNavigate }: { onNavigate?: () => void }) {
         </Link>
       ) : null}
 
-      {section.groups.map((group) => (
+      {visibleGroups.map((group) => (
         <div key={group.label} className="mt-3">
           <div className="px-2 pb-1 label-cap">{group.label}</div>
           <div className="flex flex-col gap-0.5">

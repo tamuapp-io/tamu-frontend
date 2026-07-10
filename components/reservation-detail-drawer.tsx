@@ -21,6 +21,7 @@ import {
   useAddReservationNote,
 } from "@/lib/hooks/use-reservations";
 import { useTenantTimezone } from "@/lib/hooks/use-tenant-timezone";
+import { useCategory } from "@/lib/hooks/use-category";
 import { formatDateInTz, formatTimeInTz, initials } from "@/lib/format";
 import { TableFloorPicker } from "@/components/table-floor-picker";
 import {
@@ -79,6 +80,7 @@ export function ReservationDetailDrawer({
   const open = !!reservationId;
   const storeTz = useTenantTimezone();
   const tz = (timeZoneProp?.trim() || storeTz || "UTC").trim();
+  const { isSpa, term } = useCategory();
   const { data: r, isPending } = useReservation(reservationId);
 
   const [confirmCancel, setConfirmCancel] = useState(false);
@@ -142,23 +144,36 @@ export function ReservationDetailDrawer({
           {r && (
             <>
               <section>
-                <div className="label-cap mb-2">Reservation</div>
+                <div className="label-cap mb-2">{term("reservation", "Reservation")}</div>
                 <dl className="grid grid-cols-[140px_1fr] gap-y-2.5 text-sm">
                   <dt className="text-muted-foreground">Date &amp; time</dt>
                   <dd className="font-medium tabular-nums">
                     {formatDateInTz(r.reserved_at, tz)} · {formatTimeInTz(r.reserved_at, tz)}
                   </dd>
-                  <dt className="text-muted-foreground">Party size</dt>
-                  <dd className="font-medium tabular-nums">
-                    {r.party_size} {r.party_size === 1 ? "guest" : "guests"}
-                  </dd>
-                  <dt className="text-muted-foreground">Table</dt>
-                  <dd className="font-medium">
-                    {r.table?.name
-                      ?? (r.tables && r.tables.length > 0
-                        ? r.tables.map((t) => t.name).join(", ")
-                        : "—")}
-                  </dd>
+                  {isSpa ? (
+                    <>
+                      <dt className="text-muted-foreground">Service</dt>
+                      <dd className="font-medium">{r.service?.name ?? "—"}</dd>
+                      <dt className="text-muted-foreground">{term("resource", "Therapist")}</dt>
+                      <dd className="font-medium">{r.therapist?.name ?? "—"}</dd>
+                      <dt className="text-muted-foreground">Room</dt>
+                      <dd className="font-medium">{r.room?.name ?? "—"}</dd>
+                    </>
+                  ) : (
+                    <>
+                      <dt className="text-muted-foreground">{term("party", "Party size")}</dt>
+                      <dd className="font-medium tabular-nums">
+                        {r.party_size} {r.party_size === 1 ? "guest" : "guests"}
+                      </dd>
+                      <dt className="text-muted-foreground">Table</dt>
+                      <dd className="font-medium">
+                        {r.table?.name
+                          ?? (r.tables && r.tables.length > 0
+                            ? r.tables.map((t) => t.name).join(", ")
+                            : "—")}
+                      </dd>
+                    </>
+                  )}
                   <dt className="text-muted-foreground">Duration</dt>
                   <dd className="font-medium tabular-nums">
                     {r.duration_mins} minutes
@@ -280,13 +295,15 @@ export function ReservationDetailDrawer({
                   {TRANSITION_ICON[primaryAction]}{" "}
                   {TRANSITION_LABEL[primaryAction]}
                 </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => setMoveOpen(true)}
-                  disabled={r.status === "completed" || r.status === "cancelled" || r.status === "no_show"}
-                >
-                  <MoveRight className="h-4 w-4" /> Move table
-                </Button>
+                {!isSpa && (
+                  <Button
+                    variant="outline"
+                    onClick={() => setMoveOpen(true)}
+                    disabled={r.status === "completed" || r.status === "cancelled" || r.status === "no_show"}
+                  >
+                    <MoveRight className="h-4 w-4" /> Move table
+                  </Button>
+                )}
               </div>
             )}
 

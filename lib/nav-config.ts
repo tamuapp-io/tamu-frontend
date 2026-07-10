@@ -6,7 +6,9 @@ import {
   CircleUserRound,
   ClipboardList,
   Contact,
+  DoorOpen,
   Grid2x2,
+  Hand,
   Home,
   LayoutDashboard,
   Megaphone,
@@ -14,6 +16,7 @@ import {
   Plug,
   Repeat,
   Settings,
+  Sparkles,
   Ticket,
   TicketCheck,
   Users,
@@ -24,6 +27,8 @@ export type AppNavItem = {
   label: string;
   icon: LucideIcon;
   disabled?: boolean;
+  /** If set, only tenants in one of these categories see this item. */
+  categories?: string[];
   /** Shown in command palette / search only */
   keywords?: string[];
 };
@@ -54,6 +59,8 @@ export type AppSection = {
   disabled?: boolean;
   /** If set, only users with one of these roles may see/enter the section. */
   roles?: string[];
+  /** If set, only tenants in one of these categories see this section. */
+  categories?: string[];
   match: string[];
   groups: AppNavGroup[];
 };
@@ -62,24 +69,38 @@ export const APP_SECTIONS: AppSection[] = [
   {
     id: "booking",
     label: "Booking",
-    description: "Reservations, walk-ins, waitlist, tables, and the live floor.",
+    description: "Reservations, walk-ins, waitlist, tables or spa catalog, and live service.",
     icon: CalendarCheck,
     home: "/live",
-    match: ["/live", "/reservations", "/walkins", "/waitlist", "/tables", "/guests", "/reports"],
+    match: [
+      "/live",
+      "/reservations",
+      "/walkins",
+      "/waitlist",
+      "/tables",
+      "/services",
+      "/therapists",
+      "/rooms",
+      "/guests",
+      "/reports",
+    ],
     groups: [
       {
         label: "Operate",
         items: [
-          { href: "/live", label: "Live service", icon: Activity, keywords: ["tonight", "floor"] },
-          { href: "/reservations", label: "Reservations", icon: CalendarCheck, keywords: ["bookings"] },
-          { href: "/walkins", label: "Walk-ins", icon: Users, keywords: ["walk in", "ledger"] },
+          { href: "/live", label: "Live service", icon: Activity, categories: ["restaurant", "cafe"], keywords: ["tonight", "floor"] },
+          { href: "/reservations", label: "Reservations", icon: CalendarCheck, keywords: ["bookings", "appointments"] },
+          { href: "/walkins", label: "Walk-ins", icon: Users, categories: ["restaurant", "cafe"], keywords: ["walk in", "ledger"] },
           { href: "/waitlist", label: "Waitlist", icon: ClipboardList, keywords: ["queue"] },
         ],
       },
       {
         label: "Manage",
         items: [
-          { href: "/tables", label: "Tables & Floor", icon: Grid2x2, keywords: ["floor plan", "layout"] },
+          { href: "/tables", label: "Tables & Floor", icon: Grid2x2, categories: ["restaurant", "cafe"], keywords: ["floor plan", "layout"] },
+          { href: "/services", label: "Services", icon: Sparkles, categories: ["spa", "wellness"], keywords: ["treatments", "packages", "catalog"] },
+          { href: "/therapists", label: "Therapists", icon: Hand, categories: ["spa", "wellness"], keywords: ["practitioners", "staff"] },
+          { href: "/rooms", label: "Rooms", icon: DoorOpen, categories: ["spa", "wellness"], keywords: ["treatment rooms"] },
           { href: "/guests", label: "Guests", icon: CircleUserRound, keywords: ["crm", "diners", "reservations"] },
           { href: "/reports", label: "Reports", icon: ChartLine, keywords: ["analytics", "reservations"] },
         ],
@@ -92,6 +113,7 @@ export const APP_SECTIONS: AppSection[] = [
     description: "Events, attendees, check-in, and ticket sales.",
     icon: Ticket,
     home: "/events",
+    categories: ["restaurant", "cafe"],
     // `/reports/events` is listed before `/reports` (Booking) wins it because
     // section resolution prefers the longest matching prefix.
     match: ["/events", "/reports/events"],
@@ -153,6 +175,34 @@ export const GLOBAL_NAV_ITEMS: AppNavItem[] = [
 export function sectionAllowedForRole(section: AppSection, role?: string | null): boolean {
   if (!section.roles) return true;
   return role != null && section.roles.includes(role);
+}
+
+/** Whether a tenant in `category` sees this section. */
+export function sectionAllowedForCategory(section: AppSection, category?: string | null): boolean {
+  if (!section.categories) return true;
+  return category != null && section.categories.includes(category);
+}
+
+/** Whether a tenant in `category` sees this nav item. */
+export function navItemAllowedForCategory(item: AppNavItem, category?: string | null): boolean {
+  if (!item.categories) return true;
+  return category != null && item.categories.includes(category);
+}
+
+/**
+ * The landing route for a section given the tenant's category — the first
+ * item the category can actually see (so a spa's Booking section doesn't
+ * land on the restaurant-only Live view). Falls back to `section.home`.
+ */
+export function sectionHomeForCategory(section: AppSection, category?: string | null): string {
+  for (const group of section.groups) {
+    for (const item of group.items) {
+      if (!item.disabled && navItemAllowedForCategory(item, category)) {
+        return item.href;
+      }
+    }
+  }
+  return section.home;
 }
 
 /** Returns true when `pathname` is at, or nested under, `prefix`. */
