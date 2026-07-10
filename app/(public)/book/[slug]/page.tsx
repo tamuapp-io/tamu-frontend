@@ -765,9 +765,22 @@ function StepSlot({
         {availabilityQuery.isSuccess && slots.length === 0 && (
           <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
             <Clock className="mx-auto mb-2 h-5 w-5 opacity-60" />
-            No availability for this date{!isSpa ? "/party" : ""}.
-            <br />
-            Try a different date{!isSpa ? " or fewer guests" : ""}.
+            <p className="font-medium text-foreground">No availability for this date{!isSpa ? "/party" : ""}.</p>
+            <p className="mt-2">
+              Try a different date{!isSpa ? " or fewer guests" : ""}.
+            </p>
+            {isSpa ? (
+              <p className="mt-3 text-xs leading-relaxed">
+                If this keeps happening, the venue may still be setting up — they need
+                operating hours, at least one treatment room, an active service, and a
+                therapist assigned to that service.
+              </p>
+            ) : (
+              <p className="mt-3 text-xs leading-relaxed">
+                If this keeps happening, the venue may still be setting up — they need
+                operating hours and bookable tables that fit your party size.
+              </p>
+            )}
           </div>
         )}
         {availabilityQuery.isSuccess && slots.length === 0 && !isSpa && tenant.waitlist?.enabled && (
