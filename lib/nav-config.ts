@@ -88,7 +88,8 @@ export const APP_SECTIONS: AppSection[] = [
       {
         label: "Operate",
         items: [
-          { href: "/live", label: "Live service", icon: Activity, categories: ["restaurant", "cafe"], keywords: ["tonight", "floor"] },
+          { href: "/live", label: "Live service", icon: Activity, categories: ["restaurant", "cafe"], keywords: ["tonight", "floor", "timeline"] },
+          { href: "/live", label: "Live schedule", icon: Activity, categories: ["spa", "wellness"], keywords: ["today", "timeline", "appointments"] },
           { href: "/reservations", label: "Reservations", icon: CalendarCheck, keywords: ["bookings", "appointments"] },
           { href: "/walkins", label: "Walk-ins", icon: Users, categories: ["restaurant", "cafe"], keywords: ["walk in", "ledger"] },
           { href: "/waitlist", label: "Waitlist", icon: ClipboardList, keywords: ["queue"] },
