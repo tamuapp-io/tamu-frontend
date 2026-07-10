@@ -18,6 +18,7 @@ import { GuestWhatsappButton } from "@/components/guest-whatsapp-button";
 import { ReturningGuestBadge } from "@/components/returning-guest-badge";
 import { WalkinDialog } from "@/components/walkin-dialog";
 import { useReservationsList } from "@/lib/hooks/use-reservations";
+import { useCategory } from "@/lib/hooks/use-category";
 import { useTenantTimezone } from "@/lib/hooks/use-tenant-timezone";
 import { useUtcBootstrapDateRepair } from "@/lib/hooks/use-utc-bootstrap-date-repair";
 import { useVenueTimezoneFromMeta } from "@/lib/hooks/use-venue-timezone-from-meta";
@@ -45,6 +46,8 @@ const STATUS_OPTIONS: Array<{ value: ReservationStatus; label: string }> = [
 ];
 
 export default function ReservationsPage() {
+  const { isSpa, term } = useCategory();
+  const reservationsLabel = term("reservations", "Reservations");
   const storeTz = useTenantTimezone();
   const [date, setDate] = useState(() => todayISOInTz(storeTz));
   const [statusFilter, setStatusFilter] = useState<ReservationStatus | "all">(
@@ -102,21 +105,25 @@ export default function ReservationsPage() {
       <AppTopbar
         breadcrumbs={[
           { label: "Operate" },
-          { label: "Reservations", current: true },
+          { label: reservationsLabel, current: true },
         ]}
-        primaryAction={{
-          label: "New walk-in",
-          onClick: () => setWalkinOpen(true),
-          icon: <Plus className="h-4 w-4" />,
-        }}
+        primaryAction={
+          isSpa
+            ? undefined
+            : {
+                label: "New walk-in",
+                onClick: () => setWalkinOpen(true),
+                icon: <Plus className="h-4 w-4" />,
+              }
+        }
       />
 
       <main className="flex-1 space-y-4 p-6">
         <div className="flex flex-wrap items-end gap-4">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Reservations</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">{reservationsLabel}</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              {reservations.length} reservations · {pendingCount} awaiting confirmation
+              {reservations.length} {reservationsLabel.toLowerCase()} · {pendingCount} awaiting confirmation
             </p>
           </div>
           <div className="ml-auto flex items-center gap-2">
@@ -217,18 +224,26 @@ export default function ReservationsPage() {
 
         {/* Reservations table */}
         <section className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
-          <div className="grid grid-cols-[68px_1fr_72px_180px_88px_120px_40px] gap-3 border-b border-border bg-muted/30 px-4 py-3 label-cap">
+          <div
+            className={cn(
+              "grid gap-3 border-b border-border bg-muted/30 px-4 py-3 label-cap",
+              isSpa
+                ? "grid-cols-[68px_1fr_1fr_140px_88px_120px_40px]"
+                : "grid-cols-[68px_1fr_72px_180px_88px_120px_40px]",
+            )}
+          >
             <span>Time</span>
             <span>Guest</span>
-            <span>Party</span>
-            <span>Tables</span>
+            {!isSpa && <span>Party</span>}
+            {isSpa ? <span>Service</span> : <span>Tables</span>}
+            {isSpa && <span>{term("resource", "Therapist")}</span>}
             <span>Source</span>
             <span>Status</span>
             <span />
           </div>
 
           {isPending ? (
-            <ListSkeleton />
+            <ListSkeleton isSpa={isSpa} />
           ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-2 py-16 text-center">
               <p className="text-sm text-muted-foreground">
@@ -245,6 +260,7 @@ export default function ReservationsPage() {
                   key={r.id}
                   r={r}
                   timeZone={displayTz}
+                  isSpa={isSpa}
                   selected={selectedId === r.id}
                   onSelect={() => setSelectedId(r.id)}
                 />
@@ -268,7 +284,7 @@ export default function ReservationsPage() {
         onClose={() => setSelectedId(null)}
         timeZone={displayTz}
       />
-      <WalkinDialog timeZone={displayTz} open={walkinOpen} onOpenChange={setWalkinOpen} />
+      <WalkinDialog timeZone={displayTz} open={walkinOpen && !isSpa} onOpenChange={setWalkinOpen} />
     </>
   );
 }
@@ -276,11 +292,13 @@ export default function ReservationsPage() {
 function ReservationRow({
   r,
   timeZone,
+  isSpa,
   selected,
   onSelect,
 }: {
   r: Reservation;
   timeZone: string;
+  isSpa: boolean;
   selected: boolean;
   onSelect: () => void;
 }) {
@@ -296,7 +314,10 @@ function ReservationRow({
         }
       }}
       className={cn(
-        "relative grid cursor-pointer grid-cols-[68px_1fr_72px_180px_88px_120px_72px] items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/40",
+        "relative grid cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/40",
+        isSpa
+          ? "grid-cols-[68px_1fr_1fr_140px_88px_120px_72px]"
+          : "grid-cols-[68px_1fr_72px_180px_88px_120px_72px]",
         selected && "bg-muted/60",
       )}
     >
@@ -322,12 +343,19 @@ function ReservationRow({
           </div>
         </div>
       </div>
-      <span className="text-sm font-medium tabular-nums">{r.party_size}</span>
+      {!isSpa && <span className="text-sm font-medium tabular-nums">{r.party_size}</span>}
       <span className="truncate text-sm">
-        {r.tables?.length
-          ? r.tables.map((t) => t.name).join(", ")
-          : "—"}
+        {isSpa
+          ? r.service?.name ?? "—"
+          : r.tables?.length
+            ? r.tables.map((t) => t.name).join(", ")
+            : "—"}
       </span>
+      {isSpa && (
+        <span className="truncate text-sm text-muted-foreground">
+          {r.therapist?.name ?? "—"}
+        </span>
+      )}
       <span className="rounded bg-muted px-2 py-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
         {r.source}
       </span>
@@ -346,13 +374,18 @@ function ReservationRow({
   );
 }
 
-function ListSkeleton() {
+function ListSkeleton({ isSpa }: { isSpa: boolean }) {
   return (
     <ul className="divide-y divide-border">
       {Array.from({ length: 6 }).map((_, i) => (
         <li
           key={i}
-          className="grid grid-cols-[68px_1fr_72px_180px_88px_120px_72px] items-center gap-3 px-4 py-3"
+          className={cn(
+            "grid items-center gap-3 px-4 py-3",
+            isSpa
+              ? "grid-cols-[68px_1fr_1fr_140px_88px_120px_72px]"
+              : "grid-cols-[68px_1fr_72px_180px_88px_120px_72px]",
+          )}
         >
           <div className="h-4 w-12 animate-pulse rounded bg-muted" />
           <div className="flex items-center gap-2.5">

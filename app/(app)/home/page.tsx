@@ -4,7 +4,12 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { AppTopbar } from "@/components/app-topbar";
 import { useAuthStore } from "@/lib/store/auth-store";
-import { APP_SECTIONS, sectionAllowedForRole } from "@/lib/nav-config";
+import {
+  APP_SECTIONS,
+  sectionAllowedForCategory,
+  sectionAllowedForRole,
+  sectionHomeForCategory,
+} from "@/lib/nav-config";
 import { cn } from "@/lib/utils";
 
 export default function HomeHubPage() {
@@ -12,7 +17,11 @@ export default function HomeHubPage() {
   const tenant = useAuthStore((s) => s.tenant);
 
   const firstName = user?.name?.split(" ")[0];
-  const sections = APP_SECTIONS.filter((s) => sectionAllowedForRole(s, user?.role));
+  const sections = APP_SECTIONS.filter(
+    (s) =>
+      sectionAllowedForRole(s, user?.role) &&
+      sectionAllowedForCategory(s, tenant?.category),
+  );
 
   return (
     <>
@@ -69,7 +78,11 @@ export default function HomeHubPage() {
             }
 
             return (
-              <Link key={section.id} href={section.home} className={cardClass}>
+              <Link
+                key={section.id}
+                href={sectionHomeForCategory(section, tenant?.category)}
+                className={cardClass}
+              >
                 {inner}
               </Link>
             );

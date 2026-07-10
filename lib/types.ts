@@ -18,11 +18,35 @@ export type TableSection = "indoor" | "outdoor" | "private" | "bar" | string;
 export type TableShape = "round" | "rectangle" | "booth";
 export type TableStatus = "active" | "inactive" | "maintenance";
 
+export interface CategoryTerminology {
+  reservation?: string;
+  reservations?: string;
+  resource?: string;
+  resources?: string;
+  party?: string;
+  book_cta?: string;
+  book_intro?: string;
+}
+
+export interface CategoryConfig {
+  label?: string;
+  booking_strategy?: string;
+  resource?: string;
+  secondary_resource?: string | null;
+  catalog?: string | null;
+  uses_party_size?: boolean;
+  sections?: string[];
+  terminology?: CategoryTerminology;
+}
+
 export interface Tenant {
   id: string;
   name: string;
   slug: string;
   plan: string;
+  /** Business vertical: restaurant | cafe | spa | wellness | … */
+  category?: string;
+  category_config?: CategoryConfig;
   timezone: string;
   is_published?: boolean;
 }
@@ -65,6 +89,57 @@ export interface Table {
   updated_at?: string;
 }
 
+/* ===== Spa catalog types ===== */
+
+export interface SpaService {
+  id: string;
+  name: string;
+  description?: string | null;
+  duration_mins: number;
+  price_cents: number;
+  currency: string;
+  is_active: boolean;
+  display_order: number;
+  therapist_ids?: string[];
+  therapists?: { id: string; name: string }[];
+}
+
+export interface Therapist {
+  id: string;
+  name: string;
+  bio?: string | null;
+  avatar_url?: string | null;
+  is_active: boolean;
+  display_order: number;
+  service_ids?: string[];
+  services?: { id: string; name: string }[];
+}
+
+export interface SpaRoom {
+  id: string;
+  name: string;
+  is_active: boolean;
+  display_order: number;
+}
+
+export interface SpaAppointmentService {
+  id: string;
+  name: string;
+  duration_mins: number;
+  price_cents: number;
+  currency: string;
+}
+
+export interface SpaAppointmentTherapist {
+  id: string;
+  name: string;
+}
+
+export interface SpaAppointmentRoom {
+  id: string;
+  name: string;
+}
+
 export interface AvailabilitySlot {
   time: string;
   available: boolean;
@@ -74,7 +149,9 @@ export interface AvailabilitySlot {
 
 export interface AvailabilityResponse {
   date: string;
-  party_size: number;
+  party_size?: number;
+  service_id?: string;
+  therapist_id?: string | null;
   slots: AvailabilitySlot[];
 }
 
@@ -106,6 +183,13 @@ export interface Reservation {
   /** Present when eager-loaded alongside single-table bookings. */
   table?: Table | null;
   tables?: Table[];
+  /** Spa/wellness appointment fields (null for restaurant reservations). */
+  service_id?: string | null;
+  therapist_id?: string | null;
+  room_id?: string | null;
+  service?: SpaAppointmentService | null;
+  therapist?: SpaAppointmentTherapist | null;
+  room?: SpaAppointmentRoom | null;
   guest?: Guest;
   cancelled_at?: string | null;
   cancel_reason?: string | null;
@@ -152,6 +236,7 @@ export interface RegisterPayload {
   password: string;
   restaurant_name: string;
   timezone?: string;
+  category?: string;
 }
 
 export interface LoginPayload {
@@ -186,7 +271,7 @@ export interface ReservationGuestPayload {
 
 export interface CreateReservationPayload {
   reserved_at: string; // ISO datetime
-  party_size: number;
+  party_size?: number;
   duration_mins?: number;
   guest: ReservationGuestPayload;
   special_requests?: string;
@@ -195,6 +280,8 @@ export interface CreateReservationPayload {
   source?: ReservationSource;
   table_id?: string;
   combination_id?: string;
+  service_id?: string;
+  therapist_id?: string;
 }
 
 export interface RescheduleReservationPayload {
@@ -223,6 +310,10 @@ export interface PublicTenant {
   slug: string;
   timezone: string;
   is_published: boolean;
+  category?: string;
+  booking_strategy?: string;
+  terminology?: CategoryTerminology;
+  uses_party_size?: boolean;
   waitlist: PublicTenantWaitlistProfile;
   custom_booking_fields: CustomBookingField[];
   description?: string | null;
@@ -235,6 +326,11 @@ export interface PublicTenant {
   brand_color?: string | null;
 }
 
+export interface PublicSpaCatalog {
+  services: SpaService[];
+  therapists: Therapist[];
+}
+
 export interface PublicAvailabilitySlot {
   time: string; // HH:MM (tenant local)
   reserved_at_utc: string; // ISO UTC
@@ -244,7 +340,9 @@ export interface PublicAvailabilitySlot {
 
 export interface PublicAvailabilityResponse {
   date: string;
-  party_size: number;
+  party_size?: number;
+  service_id?: string;
+  therapist_id?: string | null;
   slots: PublicAvailabilitySlot[];
 }
 
@@ -266,14 +364,20 @@ export interface PublicReservation {
   cancelled_at?: string | null;
   /** Assigned table(s): name + section for the guest (no internal ids). */
   assigned_tables?: { name: string; section?: string | null }[];
+  /** Spa/wellness appointment details. */
+  service?: SpaAppointmentService | null;
+  therapist?: SpaAppointmentTherapist | null;
+  room?: SpaAppointmentRoom | null;
   /** Venue IANA timezone for displaying reserved_at */
   restaurant_timezone?: string;
 }
 
 export interface PublicCreateReservationPayload {
   reserved_at: string;
-  party_size: number;
+  party_size?: number;
   duration_mins?: number;
+  service_id?: string;
+  therapist_id?: string;
   guest: {
     name: string;
     email: string;

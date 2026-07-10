@@ -5,6 +5,7 @@ import type {
   PublicAvailabilityResponse,
   PublicCreateReservationPayload,
   PublicReservation,
+  PublicSpaCatalog,
   PublicTenant,
   RescheduleReservationPayload,
   WaitlistEntryPublic,
@@ -21,7 +22,17 @@ export const publicBookingApi = {
   profile: (slug: string) =>
     api.get<ItemEnvelope<PublicTenant>>(`public/${slug}`, { auth: false }),
 
-  availability: (slug: string, query: { date: string; party_size: number }) =>
+  catalog: (slug: string) =>
+    api.get<ItemEnvelope<PublicSpaCatalog>>(`public/${slug}/catalog`, {
+      auth: false,
+    }),
+
+  availability: (
+    slug: string,
+    query:
+      | { date: string; party_size: number }
+      | { date: string; service_id: string; therapist_id?: string },
+  ) =>
     api.get<ItemEnvelope<PublicAvailabilityResponse>>(
       `public/${slug}/availability`,
       { query, auth: false },

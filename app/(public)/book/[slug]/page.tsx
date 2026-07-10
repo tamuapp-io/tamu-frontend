@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { use } from "react";
 import { Calendar, Check, ChevronLeft, ClipboardList, Clock, Users } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -22,11 +22,15 @@ import type {
   PublicAvailabilitySlot,
   PublicReservation,
   PublicTenant,
+  SpaService,
+  Therapist,
 } from "@/lib/types";
 
-type Step = "date" | "slot" | "details" | "done";
+type Step = "service" | "date" | "slot" | "details" | "done";
 
 interface BookingState {
+  service_id: string | null;
+  therapist_id: string | null;
   date: string;
   party_size: number;
   slot: PublicAvailabilitySlot | null;
@@ -72,9 +76,20 @@ export default function PublicBookingPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = use(params);
+  const profileQuery = useQuery({
+    queryKey: ["public", slug, "profile"],
+    queryFn: async () => (await publicBookingApi.profile(slug)).data,
+    retry: false,
+  });
+
+  const tenant = profileQuery.data;
+  const isSpa = tenant?.booking_strategy === "spa";
+
   const [step, setStep] = useState<Step>("date");
   const [confirmation, setConfirmation] = useState<PublicReservation | null>(null);
   const [state, setState] = useState<BookingState>({
+    service_id: null,
+    therapist_id: null,
     date: todayISO(),
     party_size: 2,
     slot: null,
@@ -84,11 +99,9 @@ export default function PublicBookingPage({
     custom_fields: {},
   });
 
-  const profileQuery = useQuery({
-    queryKey: ["public", slug, "profile"],
-    queryFn: async () => (await publicBookingApi.profile(slug)).data,
-    retry: false,
-  });
+  useEffect(() => {
+    if (isSpa) setStep("service");
+  }, [isSpa]);
 
   if (profileQuery.isLoading) {
     return <BookingShellSkeleton />;
@@ -102,7 +115,7 @@ export default function PublicBookingPage({
           <h1 className="text-xl font-semibold">Booking page not found</h1>
           <p className="mt-2 text-sm text-muted-foreground">
             {err instanceof ApiError && err.status === 404
-              ? "This restaurant hasn't published their booking page yet."
+              ? "This venue hasn't published their booking page yet."
               : "We couldn't load this booking page. Please try again later."}
           </p>
         </Card>
@@ -114,22 +127,34 @@ export default function PublicBookingPage({
     return <BookingShellSkeleton />;
   }
 
-  const tenant = profileQuery.data;
+  const venue = profileQuery.data;
+  const venueIsSpa = venue.booking_strategy === "spa";
 
   return (
-    <BookingShell tenant={tenant}>
-      <Stepper step={step} />
-      {step === "date" && (
-        <StepDate
+    <BookingShell tenant={venue} isSpa={venueIsSpa}>
+      <Stepper step={step} isSpa={venueIsSpa} terminology={venue.terminology} />
+      {step === "service" && venueIsSpa && (
+        <StepService
+          slug={slug}
+          tenant={venue}
           state={state}
           setState={setState}
+          onNext={() => setStep("date")}
+        />
+      )}
+      {step === "date" && (
+        <StepDate
+          tenant={venue}
+          state={state}
+          setState={setState}
+          onBack={venueIsSpa ? () => setStep("service") : undefined}
           onNext={() => setStep("slot")}
         />
       )}
       {step === "slot" && (
         <StepSlot
           slug={slug}
-          tenant={tenant}
+          tenant={venue}
           state={state}
           setState={setState}
           onBack={() => setStep("date")}
@@ -139,7 +164,7 @@ export default function PublicBookingPage({
       {step === "details" && (
         <StepDetails
           slug={slug}
-          tenant={tenant}
+          tenant={venue}
           state={state}
           setState={setState}
           onBack={() => setStep("slot")}
@@ -150,7 +175,7 @@ export default function PublicBookingPage({
         />
       )}
       {step === "done" && confirmation && (
-        <StepDone confirmation={confirmation} tenant={tenant} />
+        <StepDone confirmation={confirmation} tenant={venue} />
       )}
     </BookingShell>
   );
@@ -158,21 +183,24 @@ export default function PublicBookingPage({
 
 function BookingShell({
   tenant,
+  isSpa,
   children,
 }: {
   tenant: PublicTenant | null;
+  isSpa?: boolean;
   children: React.ReactNode;
 }) {
   const token = useAuthStore((s) => s.token);
   const hydrated = useAuthStore((s) => s.hydrated);
   const isStaffSession = hydrated && !!token;
+  const staffBackHref = isSpa ? "/reservations" : "/live";
 
   return (
     <div className="mx-auto max-w-2xl p-4 pt-10 sm:p-8">
       <header className="mb-8">
         {isStaffSession ? (
           <Link
-            href="/live"
+            href={staffBackHref}
             className="mb-6 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
             <ChevronLeft className="h-3.5 w-3.5" aria-hidden />
@@ -220,19 +248,37 @@ function BookingShellSkeleton() {
   );
 }
 
-const STEPS: { id: Step; label: string }[] = [
+const RESTAURANT_STEPS: { id: Step; label: string }[] = [
   { id: "date", label: "Date & guests" },
   { id: "slot", label: "Time" },
   { id: "details", label: "Details" },
   { id: "done", label: "Done" },
 ];
 
-function Stepper({ step }: { step: Step }) {
-  const idx = STEPS.findIndex((s) => s.id === step);
+const SPA_STEPS: { id: Step; label: string }[] = [
+  { id: "service", label: "Treatment" },
+  { id: "date", label: "Date" },
+  { id: "slot", label: "Time" },
+  { id: "details", label: "Details" },
+  { id: "done", label: "Done" },
+];
+
+function Stepper({
+  step,
+  isSpa,
+  terminology,
+}: {
+  step: Step;
+  isSpa?: boolean;
+  terminology?: PublicTenant["terminology"];
+}) {
+  const steps = isSpa ? SPA_STEPS : RESTAURANT_STEPS;
+  const idx = steps.findIndex((s) => s.id === step);
+  const partyLabel = terminology?.party ?? "Party size";
 
   return (
     <ol className="mb-6 flex items-center gap-2">
-      {STEPS.map((s, i) => (
+      {steps.map((s, i) => (
         <li key={s.id} className="flex flex-1 items-center gap-2">
           <span
             className={cn(
@@ -250,9 +296,9 @@ function Stepper({ step }: { step: Step }) {
               i === idx ? "text-foreground" : "text-muted-foreground",
             )}
           >
-            {s.label}
+            {s.id === "date" && !isSpa ? partyLabel : s.label}
           </span>
-          {i < STEPS.length - 1 && (
+          {i < steps.length - 1 && (
             <span className="ml-2 hidden flex-1 border-t border-dashed border-border sm:block" />
           )}
         </li>
@@ -261,19 +307,159 @@ function Stepper({ step }: { step: Step }) {
   );
 }
 
-function StepDate({
+function StepService({
+  slug,
+  tenant,
   state,
   setState,
   onNext,
 }: {
+  slug: string;
+  tenant: PublicTenant;
   state: BookingState;
   setState: React.Dispatch<React.SetStateAction<BookingState>>;
   onNext: () => void;
 }) {
+  const catalogQuery = useQuery({
+    queryKey: ["public", slug, "catalog"],
+    queryFn: async () => (await publicBookingApi.catalog(slug)).data,
+  });
+
+  const services = catalogQuery.data?.services ?? [];
+  const therapists = catalogQuery.data?.therapists ?? [];
+  const intro = tenant.terminology?.book_intro ?? "Choose a treatment";
+  const bookCta = tenant.terminology?.book_cta ?? "Continue";
+  const resourceLabel = tenant.terminology?.resource ?? "Therapist";
+
+  const eligibleTherapists = useMemo(() => {
+    if (!state.service_id) return therapists;
+    const service = services.find((s) => s.id === state.service_id);
+    const ids = new Set(service?.therapist_ids ?? service?.therapists?.map((t) => t.id));
+    return therapists.filter((t) => ids.size === 0 || ids.has(t.id));
+  }, [state.service_id, services, therapists]);
+
+  return (
+    <Card className="p-6">
+      <h2 className="text-lg font-semibold">{intro}</h2>
+      <div className="mt-5 min-h-[120px]">
+        {catalogQuery.isPending && (
+          <div className="space-y-2">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-14 w-full" />
+            ))}
+          </div>
+        )}
+        {catalogQuery.isSuccess && services.length === 0 && (
+          <p className="text-sm text-muted-foreground">
+            No treatments are available to book right now.
+          </p>
+        )}
+        {catalogQuery.isSuccess && services.length > 0 && (
+          <div className="space-y-2">
+            {services.map((service: SpaService) => {
+              const selected = state.service_id === service.id;
+              return (
+                <button
+                  key={service.id}
+                  type="button"
+                  onClick={() =>
+                    setState((s) => ({
+                      ...s,
+                      service_id: service.id,
+                      therapist_id: null,
+                    }))
+                  }
+                  className={cn(
+                    "flex w-full items-start justify-between rounded-lg border p-4 text-left transition-colors",
+                    selected
+                      ? "border-foreground bg-foreground/5"
+                      : "border-border hover:bg-muted/40",
+                  )}
+                >
+                  <div>
+                    <div className="font-medium">{service.name}</div>
+                    {service.description && (
+                      <p className="mt-1 text-xs text-muted-foreground">{service.description}</p>
+                    )}
+                  </div>
+                  <div className="ml-4 shrink-0 text-right text-xs text-muted-foreground">
+                    <div>{service.duration_mins} min</div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {state.service_id && eligibleTherapists.length > 0 && (
+        <div className="mt-6 space-y-2">
+          <Label>
+            {resourceLabel}{" "}
+            <span className="text-muted-foreground">(optional)</span>
+          </Label>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setState((s) => ({ ...s, therapist_id: null }))}
+              className={cn(
+                "rounded-md border px-3 py-1.5 text-sm",
+                !state.therapist_id
+                  ? "border-foreground bg-foreground text-primary-foreground"
+                  : "border-border hover:bg-muted",
+              )}
+            >
+              Any available
+            </button>
+            {eligibleTherapists.map((t: Therapist) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setState((s) => ({ ...s, therapist_id: t.id }))}
+                className={cn(
+                  "rounded-md border px-3 py-1.5 text-sm",
+                  state.therapist_id === t.id
+                    ? "border-foreground bg-foreground text-primary-foreground"
+                    : "border-border hover:bg-muted",
+                )}
+              >
+                {t.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="mt-6 flex justify-end">
+        <Button onClick={onNext} disabled={!state.service_id}>
+          {bookCta}
+        </Button>
+      </div>
+    </Card>
+  );
+}
+
+function StepDate({
+  tenant,
+  state,
+  setState,
+  onBack,
+  onNext,
+}: {
+  tenant: PublicTenant;
+  state: BookingState;
+  setState: React.Dispatch<React.SetStateAction<BookingState>>;
+  onBack?: () => void;
+  onNext: () => void;
+}) {
+  const usesPartySize = tenant.uses_party_size !== false;
+  const intro = tenant.terminology?.book_intro ?? (usesPartySize ? "When would you like to dine?" : "When would you like to visit?");
+  const bookCta = tenant.terminology?.book_cta ?? (usesPartySize ? "Find a table" : "Continue");
+  const partyLabel = tenant.terminology?.party ?? "Party size";
   const minDate = todayISO();
   return (
     <Card className="p-6">
-      <h2 className="text-lg font-semibold">When would you like to dine?</h2>
+      <h2 className="text-lg font-semibold">{intro}</h2>
       <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor="b-date">
@@ -287,58 +473,68 @@ function StepDate({
             onChange={(e) => setState((s) => ({ ...s, date: e.target.value }))}
           />
         </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="b-party">
-            <Users className="mr-1 inline h-3 w-3" /> Party size
-          </Label>
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="icon-sm"
-              onClick={() =>
-                setState((s) => ({
-                  ...s,
-                  party_size: Math.max(1, s.party_size - 1),
-                }))
-              }
-            >
-              −
-            </Button>
-            <Input
-              id="b-party"
-              type="number"
-              min={1}
-              max={20}
-              value={state.party_size}
-              onChange={(e) =>
-                setState((s) => ({
-                  ...s,
-                  party_size: Math.max(1, Number(e.target.value) || 1),
-                }))
-              }
-              className="text-center"
-            />
-            <Button
-              type="button"
-              variant="outline"
-              size="icon-sm"
-              onClick={() =>
-                setState((s) => ({
-                  ...s,
-                  party_size: Math.min(20, s.party_size + 1),
-                }))
-              }
-            >
-              +
-            </Button>
+        {usesPartySize && (
+          <div className="space-y-1.5">
+            <Label htmlFor="b-party">
+              <Users className="mr-1 inline h-3 w-3" /> {partyLabel}
+            </Label>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="icon-sm"
+                onClick={() =>
+                  setState((s) => ({
+                    ...s,
+                    party_size: Math.max(1, s.party_size - 1),
+                  }))
+                }
+              >
+                −
+              </Button>
+              <Input
+                id="b-party"
+                type="number"
+                min={1}
+                max={20}
+                value={state.party_size}
+                onChange={(e) =>
+                  setState((s) => ({
+                    ...s,
+                    party_size: Math.max(1, Number(e.target.value) || 1),
+                  }))
+                }
+                className="text-center"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon-sm"
+                onClick={() =>
+                  setState((s) => ({
+                    ...s,
+                    party_size: Math.min(20, s.party_size + 1),
+                  }))
+                }
+              >
+                +
+              </Button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
-      <div className="mt-6 flex justify-end">
-        <Button onClick={onNext} disabled={!state.date || state.party_size < 1}>
-          Find a table
+      <div className={cn("mt-6 flex", onBack ? "justify-between" : "justify-end")}>
+        {onBack ? (
+          <Button variant="outline" onClick={onBack}>
+            Back
+          </Button>
+        ) : null}
+        <Button
+          onClick={onNext}
+          disabled={!state.date || (usesPartySize && state.party_size < 1)}
+        >
+          {bookCta}
         </Button>
       </div>
     </Card>
@@ -501,15 +697,30 @@ function StepSlot({
   onBack: () => void;
   onNext: () => void;
 }) {
+  const isSpa = tenant.booking_strategy === "spa";
+
   const availabilityQuery = useQuery({
-    queryKey: ["public", slug, "availability", state.date, state.party_size],
-    queryFn: async () =>
-      (
+    queryKey: isSpa
+      ? ["public", slug, "availability", state.date, state.service_id, state.therapist_id]
+      : ["public", slug, "availability", state.date, state.party_size],
+    queryFn: async () => {
+      if (isSpa && state.service_id) {
+        return (
+          await publicBookingApi.availability(slug, {
+            date: state.date,
+            service_id: state.service_id,
+            therapist_id: state.therapist_id ?? undefined,
+          })
+        ).data;
+      }
+      return (
         await publicBookingApi.availability(slug, {
           date: state.date,
           party_size: state.party_size,
         })
-      ).data,
+      ).data;
+    },
+    enabled: isSpa ? !!state.service_id : true,
   });
 
   const slots = availabilityQuery.data?.slots ?? [];
@@ -528,8 +739,13 @@ function StepSlot({
       <h2 className="text-lg font-semibold">
         Choose your time
         <span className="ml-2 text-sm font-normal text-muted-foreground">
-          {state.date} · {state.party_size}{" "}
-          {state.party_size === 1 ? "guest" : "guests"}
+          {state.date}
+          {!isSpa && (
+            <>
+              {" "}
+              · {state.party_size} {state.party_size === 1 ? "guest" : "guests"}
+            </>
+          )}
         </span>
       </h2>
 
@@ -549,12 +765,12 @@ function StepSlot({
         {availabilityQuery.isSuccess && slots.length === 0 && (
           <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
             <Clock className="mx-auto mb-2 h-5 w-5 opacity-60" />
-            No availability for this date/party.
+            No availability for this date{!isSpa ? "/party" : ""}.
             <br />
-            Try a different date or fewer guests.
+            Try a different date{!isSpa ? " or fewer guests" : ""}.
           </div>
         )}
-        {availabilityQuery.isSuccess && slots.length === 0 && tenant.waitlist?.enabled && (
+        {availabilityQuery.isSuccess && slots.length === 0 && !isSpa && tenant.waitlist?.enabled && (
           <JoinWaitlistPanel slug={slug} partySize={state.party_size} tenant={tenant} />
         )}
         {availabilityQuery.isSuccess && slots.length > 0 && (
@@ -621,10 +837,16 @@ function StepDetails({
       const customFields = Object.fromEntries(
         Object.entries(state.custom_fields).filter(([, v]) => v.trim() !== ""),
       );
+      const isSpa = tenant.booking_strategy === "spa";
 
       return publicBookingApi.create(slug, {
         reserved_at: state.slot!.reserved_at_utc,
-        party_size: state.party_size,
+        ...(isSpa
+          ? {
+              service_id: state.service_id ?? undefined,
+              therapist_id: state.therapist_id ?? undefined,
+            }
+          : { party_size: state.party_size }),
         guest: {
           name: state.guest.name,
           email: state.guest.email,
@@ -661,9 +883,15 @@ function StepDetails({
     <Card className="p-6">
       <h2 className="text-lg font-semibold">Your details</h2>
       <p className="mt-1 text-sm text-muted-foreground">
-        Booking for {state.party_size}{" "}
-        {state.party_size === 1 ? "guest" : "guests"} at {state.slot?.time} on{" "}
-        {state.date}.
+        {tenant.booking_strategy === "spa" ? (
+          <>Appointment at {state.slot?.time} on {state.date}.</>
+        ) : (
+          <>
+            Booking for {state.party_size}{" "}
+            {state.party_size === 1 ? "guest" : "guests"} at {state.slot?.time} on{" "}
+            {state.date}.
+          </>
+        )}
       </p>
 
       <div className="mt-5 space-y-4">
@@ -910,6 +1138,8 @@ function StepDone({
   // incremented, so total > 1 ⇒ this guest has dined before.
   const totalBookings = confirmation.guest?.total_bookings ?? 0;
   const isReturning = totalBookings > 1;
+  const isSpa = !!confirmation.service;
+  const reservationLabel = tenant?.terminology?.reservation?.toLowerCase() ?? "booking";
   return (
     <Card className="p-8 text-center">
       <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-emerald-100 text-emerald-700">
@@ -919,8 +1149,8 @@ function StepDone({
         {isReturning
           ? `Welcome back${confirmation.guest?.name ? `, ${confirmation.guest.name.split(" ")[0]}` : ""}`
           : confirmation.status === "confirmed"
-            ? "Your booking is confirmed"
-            : "We've received your booking"}
+            ? `Your ${reservationLabel} is confirmed`
+            : `We've received your ${reservationLabel}`}
       </h2>
       {isReturning && (
         <p className="mt-1 text-sm font-medium text-foreground">
@@ -929,7 +1159,7 @@ function StepDone({
         </p>
       )}
       <p className={cn("text-sm text-muted-foreground", isReturning ? "mt-1" : "mt-1")}>
-        {tenant?.name ?? "The restaurant"} will see you on{" "}
+        {tenant?.name ?? "The venue"} will see you on{" "}
         {new Intl.DateTimeFormat(undefined, {
           weekday: "long",
           day: "numeric",
@@ -941,6 +1171,25 @@ function StepDone({
         .
       </p>
 
+      {(confirmation.service || confirmation.therapist) && (
+        <div className="mx-auto mt-4 max-w-md rounded-xl border border-border bg-card px-6 py-4 text-left shadow-xs">
+          <span className="label-cap">Your appointment</span>
+          {confirmation.service && (
+            <p className="mt-1.5 text-sm font-medium text-foreground">
+              {confirmation.service.name}
+              <span className="ml-2 text-muted-foreground">
+                · {confirmation.service.duration_mins} min
+              </span>
+            </p>
+          )}
+          {confirmation.therapist && (
+            <p className="mt-1 text-sm text-muted-foreground">
+              with {confirmation.therapist.name}
+            </p>
+          )}
+        </div>
+      )}
+
       <div className="mx-auto mt-6 inline-flex flex-col rounded-xl border border-border bg-muted/40 px-6 py-4">
         <span className="label-cap">Confirmation code</span>
         <span className="mt-1 font-mono text-2xl font-semibold tracking-[0.12em]">
@@ -948,7 +1197,7 @@ function StepDone({
         </span>
       </div>
 
-      {formatGuestAssignedTables(confirmation.assigned_tables) && (
+      {!isSpa && formatGuestAssignedTables(confirmation.assigned_tables) && (
         <div className="mx-auto mt-4 max-w-md rounded-xl border border-border bg-card px-6 py-4 text-left shadow-xs">
           <span className="label-cap">Your table</span>
           <p className="mt-1.5 text-sm font-medium text-foreground">

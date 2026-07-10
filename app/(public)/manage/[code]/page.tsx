@@ -74,6 +74,7 @@ export default function ManageBookingPage({
 
   const r = reservationQuery.data!;
   const tz = r.restaurant_timezone ?? "UTC";
+  const isSpa = !!r.service;
   const isCancellable = !["cancelled", "no_show", "completed", "seated"].includes(
     r.status,
   );
@@ -120,13 +121,22 @@ export default function ManageBookingPage({
           </dd>
 
           <dt className="flex items-center gap-1.5 text-muted-foreground">
-            <Users className="h-3.5 w-3.5" /> Party
+            <Users className="h-3.5 w-3.5" /> {isSpa ? "Treatment" : "Party"}
           </dt>
           <dd className="font-medium">
-            {r.party_size} {r.party_size === 1 ? "guest" : "guests"}
+            {isSpa
+              ? r.service?.name ?? "—"
+              : `${r.party_size} ${r.party_size === 1 ? "guest" : "guests"}`}
           </dd>
 
-          {tablesLabel && (
+          {isSpa && r.therapist && (
+            <>
+              <dt className="text-muted-foreground">Therapist</dt>
+              <dd className="font-medium">{r.therapist.name}</dd>
+            </>
+          )}
+
+          {!isSpa && tablesLabel && (
             <>
               <dt className="flex items-center gap-1.5 text-muted-foreground">
                 <LayoutGrid className="h-3.5 w-3.5" /> Table
@@ -161,7 +171,7 @@ export default function ManageBookingPage({
 
         {r.status === "completed" && (
           <p className="mt-6 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
-            <Check className="mr-1 inline h-4 w-4" /> Thanks for dining with us!
+            <Check className="mr-1 inline h-4 w-4" /> Thanks for visiting!
           </p>
         )}
 

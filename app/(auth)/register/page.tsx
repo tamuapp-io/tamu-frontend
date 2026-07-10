@@ -13,6 +13,13 @@ import { useAuthStore } from "@/lib/store/auth-store";
 import { ApiError } from "@/lib/api/client";
 import { toast } from "@/components/ui/toaster";
 
+const CATEGORY_OPTIONS = [
+  { value: "restaurant", label: "Restaurant" },
+  { value: "cafe", label: "Café" },
+  { value: "spa", label: "Spa" },
+  { value: "wellness", label: "Wellness" },
+] as const;
+
 export default function RegisterPage() {
   const router = useRouter();
   const register = useRegister();
@@ -24,6 +31,7 @@ export default function RegisterPage() {
     email: "",
     password: "",
     restaurant_name: "",
+    category: "restaurant",
   });
   const [timezone, setTimezone] = useState("");
 
@@ -56,8 +64,9 @@ export default function RegisterPage() {
         password: form.password,
         restaurant_name: form.restaurant_name.trim(),
         timezone: timezone.trim(),
+        category: form.category,
       });
-      toast.success("Restaurant ready", "We've created your tenant — let's get set up.");
+      toast.success("Venue ready", "We've created your tenant — let's get set up.");
       router.replace("/home");
     } catch {
       // shown inline
@@ -67,7 +76,7 @@ export default function RegisterPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Create your restaurant</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Create your venue</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           You&apos;ll be the owner of a fresh tenant. Your team can be invited later.
         </p>
@@ -75,7 +84,26 @@ export default function RegisterPage() {
 
       <form className="space-y-4" onSubmit={handleSubmit} noValidate>
         <div className="space-y-1.5">
-          <Label htmlFor="restaurant">Restaurant name</Label>
+          <Label htmlFor="category">Business type</Label>
+          <select
+            id="category"
+            className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm shadow-xs"
+            value={form.category}
+            onChange={(e) => update("category", e.target.value)}
+          >
+            {CATEGORY_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+          {fieldErrors.category?.[0] && (
+            <p className="text-xs text-destructive">{fieldErrors.category[0]}</p>
+          )}
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="restaurant">Venue name</Label>
           <Input
             id="restaurant"
             placeholder="e.g. Sajiwa SCBD"
@@ -174,7 +202,7 @@ export default function RegisterPage() {
       </form>
 
       <p className="text-center text-sm text-muted-foreground">
-        Already have a restaurant?{" "}
+        Already have an account?{" "}
         <Link href="/login" className="font-medium text-foreground hover:underline">
           Sign in
         </Link>
