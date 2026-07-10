@@ -227,6 +227,22 @@ export function formatMoney(cents: number, currency = "IDR"): string {
   }
 }
 
+/**
+ * Spa/wellness services store whole currency units in `price_cents` (e.g. 350000
+ * = Rp 350,000). Unlike ticketing, no ÷100 conversion is applied.
+ */
+export function formatServicePrice(amount: number, currency = "IDR"): string {
+  try {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency,
+      maximumFractionDigits: 0,
+    }).format(amount ?? 0);
+  } catch {
+    return `${currency} ${(amount ?? 0).toLocaleString()}`;
+  }
+}
+
 export function statusLabel(status: string) {
   switch (status) {
     case "no_show":

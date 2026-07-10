@@ -27,14 +27,7 @@ import type { SpaService } from "@/lib/types";
 import { ApiError } from "@/lib/api/client";
 import { toast } from "@/components/ui/toaster";
 import { cn } from "@/lib/utils";
-
-function formatPrice(cents: number, currency: string) {
-  return new Intl.NumberFormat(undefined, {
-    style: "currency",
-    currency: currency || "IDR",
-    minimumFractionDigits: 0,
-  }).format(cents / 100);
-}
+import { formatServicePrice } from "@/lib/format";
 
 export default function ServicesPage() {
   const { term } = useCategory();
@@ -51,7 +44,7 @@ export default function ServicesPage() {
     name: "",
     description: "",
     duration_mins: 60,
-    price_cents: 0,
+    price: 0,
     currency: "IDR",
     is_active: true,
     therapist_ids: [] as string[],
@@ -78,7 +71,7 @@ export default function ServicesPage() {
       name: "",
       description: "",
       duration_mins: 60,
-      price_cents: 0,
+      price: 0,
       currency: "IDR",
       is_active: true,
       therapist_ids: [],
@@ -92,7 +85,7 @@ export default function ServicesPage() {
       name: service.name,
       description: service.description ?? "",
       duration_mins: service.duration_mins,
-      price_cents: service.price_cents,
+      price: service.price_cents,
       currency: service.currency,
       is_active: service.is_active,
       therapist_ids: service.therapist_ids ?? service.therapists?.map((t) => t.id) ?? [],
@@ -105,7 +98,7 @@ export default function ServicesPage() {
       name: form.name.trim(),
       description: form.description.trim() || null,
       duration_mins: form.duration_mins,
-      price_cents: form.price_cents,
+      price_cents: Math.max(0, Math.round(form.price)),
       currency: form.currency,
       is_active: form.is_active,
       therapist_ids: form.therapist_ids,
@@ -219,7 +212,7 @@ export default function ServicesPage() {
                   </div>
                   <span className="text-sm tabular-nums">{service.duration_mins} min</span>
                   <span className="text-sm tabular-nums">
-                    {formatPrice(service.price_cents, service.currency)}
+                    {formatServicePrice(service.price_cents, service.currency)}
                   </span>
                   <span className="truncate text-sm text-muted-foreground">
                     {service.therapists?.map((t) => t.name).join(", ") || "—"}
@@ -275,15 +268,17 @@ export default function ServicesPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="svc-price">Price (cents)</Label>
+                <Label htmlFor="svc-price">Price ({form.currency})</Label>
                 <Input
                   id="svc-price"
                   type="number"
                   min={0}
-                  value={form.price_cents}
+                  step={1}
+                  value={form.price || ""}
                   onChange={(e) =>
-                    setForm((f) => ({ ...f, price_cents: Number(e.target.value) || 0 }))
+                    setForm((f) => ({ ...f, price: Number(e.target.value) || 0 }))
                   }
+                  placeholder="350000"
                 />
               </div>
             </div>
