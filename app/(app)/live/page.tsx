@@ -9,6 +9,7 @@ import { SpaServiceTimeline } from "@/components/spa-service-timeline";
 import { SpaRoomsBoard } from "@/components/spa-rooms-board";
 import { FloorPlanPreview } from "@/components/floor-plan-preview";
 import { WalkinDialog } from "@/components/walkin-dialog";
+import { SpaWalkinDialog } from "@/components/spa-walkin-dialog";
 import { ReservationDetailDrawer } from "@/components/reservation-detail-drawer";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -298,7 +299,9 @@ export default function LivePage() {
         </div>
       </main>
 
-      {!isSpa && (
+      {isSpa ? (
+        <SpaWalkinDialog timeZone={displayTz} open={walkinOpen} onOpenChange={setWalkinOpen} />
+      ) : (
         <WalkinDialog timeZone={displayTz} open={walkinOpen} onOpenChange={setWalkinOpen} />
       )}
       <ReservationDetailDrawer
