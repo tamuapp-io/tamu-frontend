@@ -144,15 +144,11 @@ export default function LivePage() {
             current: true,
           },
         ]}
-        primaryAction={
-          isSpa
-            ? undefined
-            : {
-                label: "Walk-in",
-                onClick: () => setWalkinOpen(true),
-                icon: <UserPlus className="h-4 w-4" />,
-              }
-        }
+        primaryAction={{
+          label: "Walk-in",
+          onClick: () => setWalkinOpen(true),
+          icon: <UserPlus className="h-4 w-4" />,
+        }}
       />
 
       <main className="flex-1 space-y-6 p-6">
