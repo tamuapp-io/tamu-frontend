@@ -17,6 +17,7 @@ import { ReservationDetailDrawer } from "@/components/reservation-detail-drawer"
 import { GuestWhatsappButton } from "@/components/guest-whatsapp-button";
 import { ReturningGuestBadge } from "@/components/returning-guest-badge";
 import { WalkinDialog } from "@/components/walkin-dialog";
+import { SpaWalkinDialog } from "@/components/spa-walkin-dialog";
 import { useReservationsList } from "@/lib/hooks/use-reservations";
 import { useCategory } from "@/lib/hooks/use-category";
 import { useTenantTimezone } from "@/lib/hooks/use-tenant-timezone";
@@ -107,15 +108,11 @@ export default function ReservationsPage() {
           { label: "Operate" },
           { label: reservationsLabel, current: true },
         ]}
-        primaryAction={
-          isSpa
-            ? undefined
-            : {
-                label: "New walk-in",
-                onClick: () => setWalkinOpen(true),
-                icon: <Plus className="h-4 w-4" />,
-              }
-        }
+        primaryAction={{
+          label: "New walk-in",
+          onClick: () => setWalkinOpen(true),
+          icon: <Plus className="h-4 w-4" />,
+        }}
       />
 
       <main className="flex-1 space-y-4 p-6">
@@ -284,7 +281,11 @@ export default function ReservationsPage() {
         onClose={() => setSelectedId(null)}
         timeZone={displayTz}
       />
-      <WalkinDialog timeZone={displayTz} open={walkinOpen && !isSpa} onOpenChange={setWalkinOpen} />
+      {isSpa ? (
+        <SpaWalkinDialog timeZone={displayTz} open={walkinOpen} onOpenChange={setWalkinOpen} />
+      ) : (
+        <WalkinDialog timeZone={displayTz} open={walkinOpen} onOpenChange={setWalkinOpen} />
+      )}
     </>
   );
 }
