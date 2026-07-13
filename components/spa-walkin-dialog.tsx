@@ -24,7 +24,7 @@ import { useServicesList, useTherapistsList } from "@/lib/hooks/use-spa-catalog"
 import { useTenantTimezone } from "@/lib/hooks/use-tenant-timezone";
 import { useCategory } from "@/lib/hooks/use-category";
 import { ApiError } from "@/lib/api/client";
-import { formatDateInTz, formatMoney, formatTimeInTz } from "@/lib/format";
+import { formatDateInTz, formatServicePrice, formatTimeInTz } from "@/lib/format";
 import { toast } from "@/components/ui/toaster";
 import type { Reservation } from "@/lib/types";
 
@@ -151,7 +151,7 @@ export function SpaWalkinDialog({ open, onOpenChange, timeZone: timeZoneProp }: 
                   activeServices.map((s) => (
                     <SelectItem key={s.id} value={s.id}>
                       {s.name} · {s.duration_mins} min
-                      {s.price_cents > 0 ? ` · ${formatMoney(s.price_cents, s.currency)}` : ""}
+                      {s.price_cents > 0 ? ` · ${formatServicePrice(s.price_cents, s.currency)}` : ""}
                     </SelectItem>
                   ))
                 )}
