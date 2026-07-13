@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { cn } from "@/lib/utils";
 import type { Reservation, SpaRoom } from "@/lib/types";
-import { formatTimeInTz, instantFromApi, statusClass } from "@/lib/format";
+import { formatTimeInTz, instantFromApi, statusClass, statusLabel } from "@/lib/format";
 
 interface SpaRoomsBoardProps {
   rooms: SpaRoom[];
@@ -27,21 +27,28 @@ export function SpaRoomsBoard({
 
   const byRoom = useMemo(() => {
     const map = new Map<string, Reservation>();
-    const now = Date.now();
 
     for (const r of reservations) {
-      if (!r.room_id && !r.room?.id) continue;
       if (!ACTIVE_STATUSES.has(r.status)) continue;
 
       const roomId = r.room_id ?? r.room?.id;
       if (!roomId) continue;
 
-      const start = instantFromApi(r.reserved_at).getTime();
-      const end = start + r.duration_mins * 60_000;
-      if (now >= start && now <= end) {
+      const existing = map.get(roomId);
+      if (!existing) {
         map.set(roomId, r);
-      } else if (!map.has(roomId) && start > now) {
+        continue;
+      }
+
+      // A started (seated) appointment occupies the room "in use" right now,
+      // regardless of the clock — staff may start a session early or run long.
+      // Priority: seated wins; otherwise show the earliest scheduled booking.
+      if (r.status === "seated" && existing.status !== "seated") {
         map.set(roomId, r);
+      } else if (existing.status !== "seated") {
+        const rStart = instantFromApi(r.reserved_at).getTime();
+        const existingStart = instantFromApi(existing.reserved_at).getTime();
+        if (rStart < existingStart) map.set(roomId, r);
       }
     }
 
@@ -64,15 +71,9 @@ export function SpaRoomsBoard({
       <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {activeRooms.map((room) => {
           const booking = byRoom.get(room.id);
-          const inUse =
-            !!booking &&
-            booking.status === "seated" &&
-            (() => {
-              const start = instantFromApi(booking.reserved_at).getTime();
-              const end = start + booking.duration_mins * 60_000;
-              const now = Date.now();
-              return now >= start && now <= end;
-            })();
+          // Status-driven: a room is in use once its appointment is started
+          // (seated), not gated by whether the scheduled hour has arrived.
+          const inUse = booking?.status === "seated";
 
           return (
             <button
@@ -111,7 +112,7 @@ export function SpaRoomsBoard({
                   </p>
                   {booking.therapist?.name && <p>with {booking.therapist.name}</p>}
                   <span className={cn("pill mt-2 inline-flex text-[10px]", statusClass(booking.status))}>
-                    {booking.status.replace("_", " ")}
+                    {statusLabel(booking.status, true)}
                   </span>
                 </div>
               ) : (

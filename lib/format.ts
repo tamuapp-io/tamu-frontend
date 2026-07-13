@@ -243,7 +243,9 @@ export function formatServicePrice(amount: number, currency = "IDR"): string {
   }
 }
 
-export function statusLabel(status: string) {
+export function statusLabel(status: string, spa = false) {
+  // Spa/wellness: a "seated" appointment means the room/therapist is in use.
+  if (spa && status === "seated") return "In use";
   switch (status) {
     case "no_show":
       return "No-show";

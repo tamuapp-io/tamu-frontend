@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { use } from "react";
 import { Calendar, Check, ChevronLeft, ClipboardList, Clock, Users } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -82,27 +82,6 @@ export default function PublicBookingPage({
     retry: false,
   });
 
-  const tenant = profileQuery.data;
-  const isSpa = tenant?.booking_strategy === "spa";
-
-  const [step, setStep] = useState<Step>("date");
-  const [confirmation, setConfirmation] = useState<PublicReservation | null>(null);
-  const [state, setState] = useState<BookingState>({
-    service_id: null,
-    therapist_id: null,
-    date: todayISO(),
-    party_size: 2,
-    slot: null,
-    guest: { name: "", email: "", phone: "", marketing_opt_in: false, birthday_month: null, birthday_day: null },
-    occasion: "",
-    special_requests: "",
-    custom_fields: {},
-  });
-
-  useEffect(() => {
-    if (isSpa) setStep("service");
-  }, [isSpa]);
-
   if (profileQuery.isLoading) {
     return <BookingShellSkeleton />;
   }
@@ -127,8 +106,31 @@ export default function PublicBookingPage({
     return <BookingShellSkeleton />;
   }
 
-  const venue = profileQuery.data;
+  return <PublicBookingFlow slug={slug} venue={profileQuery.data} />;
+}
+
+function PublicBookingFlow({
+  slug,
+  venue,
+}: {
+  slug: string;
+  venue: PublicTenant;
+}) {
   const venueIsSpa = venue.booking_strategy === "spa";
+
+  const [step, setStep] = useState<Step>(venueIsSpa ? "service" : "date");
+  const [confirmation, setConfirmation] = useState<PublicReservation | null>(null);
+  const [state, setState] = useState<BookingState>({
+    service_id: null,
+    therapist_id: null,
+    date: todayISO(),
+    party_size: 2,
+    slot: null,
+    guest: { name: "", email: "", phone: "", marketing_opt_in: false, birthday_month: null, birthday_day: null },
+    occasion: "",
+    special_requests: "",
+    custom_fields: {},
+  });
 
   return (
     <BookingShell tenant={venue} isSpa={venueIsSpa}>

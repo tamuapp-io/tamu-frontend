@@ -49,7 +49,7 @@ function SummaryBody({ data }: { data: EventReportSummary }) {
 
   return (
     <>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-7">
         <Stat label="Events" value={t.events} hint={`${t.published_events} published`} />
         <Stat label="Tickets sold" value={t.tickets_sold} />
         <Stat label="Revenue" value={formatMoney(t.revenue_cents)} />

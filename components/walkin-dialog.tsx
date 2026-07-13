@@ -107,7 +107,7 @@ export function WalkinDialog({ open, onOpenChange, timeZone: timeZoneProp }: Wal
         onOpenChange(o);
       }}
     >
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-h-[90vh] w-[calc(100vw-2rem)] max-w-3xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Seat a walk-in</DialogTitle>
           <DialogDescription className="space-y-1">
@@ -122,7 +122,7 @@ export function WalkinDialog({ open, onOpenChange, timeZone: timeZoneProp }: Wal
         </DialogHeader>
 
         <form className="space-y-4" onSubmit={handleSubmit} noValidate>
-          <div className="grid grid-cols-[1fr_1fr] gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label>Party size</Label>
               <div className="flex items-center gap-2 rounded-md border border-input bg-background px-2">
@@ -196,7 +196,7 @@ export function WalkinDialog({ open, onOpenChange, timeZone: timeZoneProp }: Wal
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label htmlFor="walkin-name">Guest name (optional)</Label>
               <Input

@@ -281,7 +281,9 @@ export function ReservationDetailDrawer({
               {allowed.length === 0 ? (
                 <em>terminal</em>
               ) : (
-                allowed.map((a) => a.replace("_", " ")).join(" · ")
+                allowed
+                  .map((a) => (isSpa && a === "seated" ? "in use" : a.replace("_", " ")))
+                  .join(" · ")
               )}
             </p>
 
@@ -293,7 +295,7 @@ export function ReservationDetailDrawer({
                   disabled={transition.isPending}
                 >
                   {TRANSITION_ICON[primaryAction]}{" "}
-                  {TRANSITION_LABEL[primaryAction]}
+                  {isSpa && primaryAction === "seated" ? "Start" : TRANSITION_LABEL[primaryAction]}
                 </Button>
                 {!isSpa && (
                   <Button
