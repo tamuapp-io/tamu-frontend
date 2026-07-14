@@ -191,6 +191,9 @@ export interface Reservation {
   therapist?: SpaAppointmentTherapist | null;
   room?: SpaAppointmentRoom | null;
   guest?: Guest;
+  /** Deposit due (true cents) + the hosted-invoice payment, when required. */
+  deposit_cents?: number | null;
+  payment?: ReservationPayment | null;
   cancelled_at?: string | null;
   cancel_reason?: string | null;
   created_at?: string;
@@ -346,6 +349,15 @@ export interface PublicAvailabilityResponse {
   slots: PublicAvailabilitySlot[];
 }
 
+/** Deposit payment attached to a reservation (Xendit hosted invoice). */
+export interface ReservationPayment {
+  status: PaymentStatus;
+  amount_cents: number;
+  currency: string;
+  invoice_url?: string | null;
+  paid_at?: string | null;
+}
+
 export interface PublicReservation {
   confirmation_code: string;
   status: ReservationStatus;
@@ -368,6 +380,9 @@ export interface PublicReservation {
   service?: SpaAppointmentService | null;
   therapist?: SpaAppointmentTherapist | null;
   room?: SpaAppointmentRoom | null;
+  /** Deposit due (true cents) + the hosted-invoice payment, when required. */
+  deposit_cents?: number | null;
+  payment?: ReservationPayment | null;
   /** Venue IANA timezone for displaying reserved_at */
   restaurant_timezone?: string;
 }
@@ -649,6 +664,28 @@ export interface Ticket {
   created_at?: string;
 }
 
+export type PaymentStatus = "pending" | "paid" | "expired" | "failed";
+
+/** Redacted view of a tenant's Xendit payment-gateway connection. */
+export interface XenditPaymentSnapshot {
+  configured: boolean;
+  account_label?: string | null;
+  secret_key_hint?: string | null;
+  callback_token_set: boolean;
+  webhook_url?: string | null;
+  connected_at?: string | null;
+}
+
+export interface TicketOrderPayment {
+  id: string;
+  provider: string;
+  status: PaymentStatus;
+  amount_cents: number;
+  currency: string;
+  invoice_url?: string | null;
+  paid_at?: string | null;
+}
+
 export interface TicketOrder {
   id: string;
   event_id: string;
@@ -665,6 +702,7 @@ export interface TicketOrder {
   guest?: { id: string; name: string; email?: string | null; phone?: string | null };
   referral?: { id: string; code: string; label?: string | null } | null;
   event?: { id: string; name: string; slug: string; starts_at: string | null; venue?: string | null };
+  payment?: TicketOrderPayment | null;
   created_at?: string;
 }
 
