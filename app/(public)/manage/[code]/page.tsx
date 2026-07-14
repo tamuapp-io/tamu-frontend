@@ -35,10 +35,23 @@ export default function ManageBookingPage({
 
   const reservationQuery = useQuery({
     queryKey,
-    queryFn: async () => (await publicBookingApi.show(code)).data,
+    queryFn: async () => {
+      const res = (await publicBookingApi.show(code)).data;
+
+      // Deposit still pending? Ask the gateway directly rather than waiting on
+      // a webhook that may never arrive (unreachable APP_URL in local dev, an
+      // unregistered callback, or a dropped delivery).
+      if (res.status === "pending" && res.payment?.status === "pending") {
+        try {
+          return (await publicBookingApi.refreshPayment(code)).data;
+        } catch {
+          return res; // reconciliation is best-effort
+        }
+      }
+      return res;
+    },
     retry: false,
-    // After a deposit redirect the booking is pending until the webhook lands;
-    // poll so the page flips to confirmed on its own.
+    // Keep checking until the deposit settles, then stop.
     refetchInterval: (q) => {
       const res = q.state.data;
       return res && res.status === "pending" && res.payment?.status === "pending"

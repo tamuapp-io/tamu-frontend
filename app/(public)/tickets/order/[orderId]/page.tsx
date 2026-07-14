@@ -25,7 +25,20 @@ export default function OrderStatusPage({
 
   const query = useQuery({
     queryKey: ["public", "order", orderId],
-    queryFn: async () => (await publicEventsApi.order(orderId)).data,
+    queryFn: async () => {
+      const order = (await publicEventsApi.order(orderId)).data;
+
+      // Payment still pending? Ask the gateway directly rather than waiting on
+      // a webhook that may never arrive.
+      if (order.status === "pending" && order.payment?.status === "pending") {
+        try {
+          return (await publicEventsApi.refreshOrderPayment(orderId)).data;
+        } catch {
+          return order; // reconciliation is best-effort
+        }
+      }
+      return order;
+    },
     retry: false,
     // Keep polling while the order is still pending payment/issuance.
     refetchInterval: (q) => {

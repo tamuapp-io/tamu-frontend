@@ -37,6 +37,14 @@ export const publicEventsApi = {
       auth: false,
     }),
 
+  /** Reconcile a pending payment against the gateway (webhook safety net). */
+  refreshOrderPayment: (orderId: string) =>
+    api.post<ItemEnvelope<TicketOrder>>(
+      `public/orders/${orderId}/payment/refresh`,
+      undefined,
+      { auth: false },
+    ),
+
   trackReferral: (code: string) =>
     api.get<ItemEnvelope<{ tracked: boolean }>>(`public/referrals/${code}/hit`, {
       auth: false,

@@ -57,6 +57,18 @@ export const publicBookingApi = {
       auth: false,
     }),
 
+  /**
+   * Reconcile a pending deposit against the gateway. Used when the guest
+   * returns from checkout so the booking confirms even if the webhook never
+   * reaches us. Idempotent server-side.
+   */
+  refreshPayment: (code: string) =>
+    api.post<ItemEnvelope<PublicReservation>>(
+      `public/reservations/${code}/payment/refresh`,
+      undefined,
+      { auth: false },
+    ),
+
   cancel: (code: string, reason?: string) =>
     api.delete<ItemEnvelope<PublicReservation>>(
       `public/reservations/${code}`,
