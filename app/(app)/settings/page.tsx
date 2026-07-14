@@ -24,6 +24,7 @@ import { VenueTimezonePicker } from "@/components/venue-timezone-picker";
 import { StaffBrowserNotificationsSettings } from "@/components/staff-browser-notifications-settings";
 import { StaffNotificationSoundsSettings } from "@/components/staff-notification-sounds-settings";
 import { XenditPaymentCard } from "@/components/xendit-payment-card";
+import { BookingDepositCard } from "@/components/booking-deposit-card";
 import { ApiError } from "@/lib/api/client";
 import { fetchSettings, patchSettings, syncOperatingHours } from "@/lib/api/settings";
 import { useUpdatePassword, useUpdateProfile } from "@/lib/hooks/use-auth";
@@ -1319,6 +1320,7 @@ export default function SettingsPage() {
               className="mt-6 space-y-6 focus-visible:outline-none"
             >
               <XenditPaymentCard />
+              <BookingDepositCard />
             </TabsContent>
           </Tabs>
         )}
