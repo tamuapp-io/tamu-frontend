@@ -102,8 +102,9 @@ export function XenditPaymentCard() {
                 onChange={(e) => setSecretKey(e.target.value)}
               />
               <p className="text-xs text-muted-foreground">
-                Xendit Dashboard → Settings → API Keys. Create a Secret Key with
-                invoice write access.
+                Xendit Dashboard → Settings → Developers → API Keys. Create a Secret Key
+                (starts with <code>xnd_</code>) with <strong>Money-in / Invoices: Write</strong>{" "}
+                permission. Don&apos;t paste your Public Key.
               </p>
             </div>
 
