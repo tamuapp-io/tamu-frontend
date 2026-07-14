@@ -889,6 +889,13 @@ function StepDetails({
   async function handleSubmit() {
     try {
       const r = await create.mutateAsync();
+      // Deposit required → hand off to the Xendit hosted checkout. Xendit
+      // returns the guest to /manage/{code}, which shows the confirmed booking
+      // once the webhook lands.
+      if (r.data.payment?.status === "pending" && r.data.payment.invoice_url) {
+        window.location.href = r.data.payment.invoice_url;
+        return;
+      }
       onSuccess(r.data);
     } catch {
       // shown inline

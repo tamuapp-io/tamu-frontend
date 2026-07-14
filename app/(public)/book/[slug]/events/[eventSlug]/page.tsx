@@ -239,7 +239,16 @@ function Checkout({
         })
       ).data;
     },
-    onSuccess: onDone,
+    onSuccess: (order) => {
+      // Paid order via a connected gateway → hand off to the hosted checkout.
+      // Xendit returns the guest to /tickets/order/{id}, which polls until the
+      // webhook issues tickets.
+      if (order.payment?.status === "pending" && order.payment.invoice_url) {
+        window.location.href = order.payment.invoice_url;
+        return;
+      }
+      onDone(order);
+    },
   });
 
   const total = useMemo(() => {

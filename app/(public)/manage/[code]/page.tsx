@@ -22,7 +22,7 @@ import { StatusPill } from "@/components/status-pill";
 import { publicBookingApi } from "@/lib/api/public-booking";
 import { ApiError } from "@/lib/api/client";
 import { toast } from "@/components/ui/toaster";
-import { formatGuestAssignedTables } from "@/lib/format";
+import { formatGuestAssignedTables, formatMoney } from "@/lib/format";
 
 export default function ManageBookingPage({
   params,
@@ -37,6 +37,14 @@ export default function ManageBookingPage({
     queryKey,
     queryFn: async () => (await publicBookingApi.show(code)).data,
     retry: false,
+    // After a deposit redirect the booking is pending until the webhook lands;
+    // poll so the page flips to confirmed on its own.
+    refetchInterval: (q) => {
+      const res = q.state.data;
+      return res && res.status === "pending" && res.payment?.status === "pending"
+        ? 3000
+        : false;
+    },
   });
 
   const cancel = useMutation({
@@ -174,6 +182,37 @@ export default function ManageBookingPage({
             <Check className="mr-1 inline h-4 w-4" /> Thanks for visiting!
           </p>
         )}
+
+        {r.payment && r.deposit_cents ? (
+          r.payment.status === "paid" ? (
+            <p className="mt-6 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
+              <Check className="mr-1 inline h-4 w-4" /> Deposit of{" "}
+              {formatMoney(r.deposit_cents, r.payment.currency)} paid — your booking is confirmed.
+            </p>
+          ) : r.payment.status === "pending" ? (
+            <div className="mt-6 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+              <p className="font-medium">
+                Deposit of {formatMoney(r.deposit_cents, r.payment.currency)} required
+              </p>
+              <p className="mt-1 text-amber-800">
+                Your slot is held until the deposit is paid. If you haven&apos;t finished
+                checkout, you can complete it now.
+              </p>
+              {r.payment.invoice_url && (
+                <a
+                  href={r.payment.invoice_url}
+                  className="mt-3 inline-flex h-9 items-center justify-center rounded-md bg-foreground px-4 text-sm font-medium text-primary-foreground"
+                >
+                  Complete deposit payment
+                </a>
+              )}
+            </div>
+          ) : (
+            <p className="mt-6 rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-900">
+              The deposit payment expired, so this booking was released.
+            </p>
+          )
+        ) : null}
 
         <div className="mt-8 flex flex-wrap gap-3">
           {isCancellable && (

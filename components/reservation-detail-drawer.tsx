@@ -22,7 +22,7 @@ import {
 } from "@/lib/hooks/use-reservations";
 import { useTenantTimezone } from "@/lib/hooks/use-tenant-timezone";
 import { useCategory } from "@/lib/hooks/use-category";
-import { formatDateInTz, formatTimeInTz, initials } from "@/lib/format";
+import { formatDateInTz, formatTimeInTz, formatMoney, initials } from "@/lib/format";
 import { TableFloorPicker } from "@/components/table-floor-picker";
 import {
   Dialog,
@@ -254,21 +254,65 @@ export function ReservationDetailDrawer({
 
               <section>
                 <div className="label-cap mb-2">Payment</div>
-                <div className="flex items-center gap-3 rounded-lg border border-border p-3 text-sm">
-                  <div className="grid h-9 w-9 place-items-center rounded bg-emerald-50 text-emerald-700">
-                    ✓
-                  </div>
-                  <div className="flex-1">
-                    <div className="font-medium">Deposit not required</div>
-                    <div className="text-xs text-muted-foreground">
-                      Phase 2 lights up payments. PRD §10.
+                {r.deposit_cents && r.payment ? (
+                  <div className="flex items-center gap-3 rounded-lg border border-border p-3 text-sm">
+                    <div
+                      className={
+                        r.payment.status === "paid"
+                          ? "grid h-9 w-9 place-items-center rounded bg-emerald-50 text-emerald-700"
+                          : r.payment.status === "pending"
+                            ? "grid h-9 w-9 place-items-center rounded bg-amber-50 text-amber-700"
+                            : "grid h-9 w-9 place-items-center rounded bg-rose-50 text-rose-700"
+                      }
+                    >
+                      {r.payment.status === "paid" ? "✓" : r.payment.status === "pending" ? "…" : "!"}
                     </div>
+                    <div className="flex-1">
+                      <div className="font-medium">
+                        Deposit {formatMoney(r.deposit_cents, r.payment.currency)}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {r.payment.status === "paid"
+                          ? "Paid — booking confirmed."
+                          : r.payment.status === "pending"
+                            ? "Awaiting guest payment (slot held)."
+                            : "Deposit payment expired."}
+                      </div>
+                    </div>
+                    <span
+                      className={
+                        r.payment.status === "paid"
+                          ? "pill completed"
+                          : r.payment.status === "pending"
+                            ? "pill pending"
+                            : "pill cancelled"
+                      }
+                    >
+                      <span className="dot" aria-hidden />
+                      {r.payment.status === "paid"
+                        ? "Paid"
+                        : r.payment.status === "pending"
+                          ? "Pending"
+                          : "Expired"}
+                    </span>
                   </div>
-                  <span className="pill completed">
-                    <span className="dot" aria-hidden />
-                    Free
-                  </span>
-                </div>
+                ) : (
+                  <div className="flex items-center gap-3 rounded-lg border border-border p-3 text-sm">
+                    <div className="grid h-9 w-9 place-items-center rounded bg-emerald-50 text-emerald-700">
+                      ✓
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-medium">Deposit not required</div>
+                      <div className="text-xs text-muted-foreground">
+                        This booking has no deposit.
+                      </div>
+                    </div>
+                    <span className="pill completed">
+                      <span className="dot" aria-hidden />
+                      Free
+                    </span>
+                  </div>
+                )}
               </section>
             </>
           )}

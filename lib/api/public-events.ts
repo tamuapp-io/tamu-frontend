@@ -31,6 +31,12 @@ export const publicEventsApi = {
   ticket: (code: string) =>
     api.get<ItemEnvelope<TicketOrder>>(`public/tickets/${code}`, { auth: false }),
 
+  /** Poll an order by id after a gateway redirect until tickets are issued. */
+  order: (orderId: string) =>
+    api.get<ItemEnvelope<TicketOrder>>(`public/orders/${orderId}`, {
+      auth: false,
+    }),
+
   trackReferral: (code: string) =>
     api.get<ItemEnvelope<{ tracked: boolean }>>(`public/referrals/${code}/hit`, {
       auth: false,

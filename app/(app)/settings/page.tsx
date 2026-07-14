@@ -23,6 +23,7 @@ import { toast } from "@/components/ui/toaster";
 import { VenueTimezonePicker } from "@/components/venue-timezone-picker";
 import { StaffBrowserNotificationsSettings } from "@/components/staff-browser-notifications-settings";
 import { StaffNotificationSoundsSettings } from "@/components/staff-notification-sounds-settings";
+import { XenditPaymentCard } from "@/components/xendit-payment-card";
 import { ApiError } from "@/lib/api/client";
 import { fetchSettings, patchSettings, syncOperatingHours } from "@/lib/api/settings";
 import { useUpdatePassword, useUpdateProfile } from "@/lib/hooks/use-auth";
@@ -459,6 +460,9 @@ export default function SettingsPage() {
               </TabsTrigger>
               <TabsTrigger value="notifications" className="shrink-0 px-3">
                 Notifications
+              </TabsTrigger>
+              <TabsTrigger value="payments" className="shrink-0 px-3">
+                Payments
               </TabsTrigger>
             </TabsList>
 
@@ -1308,6 +1312,13 @@ export default function SettingsPage() {
                   )}
                 </div>
               </Card>
+            </TabsContent>
+
+            <TabsContent
+              value="payments"
+              className="mt-6 space-y-6 focus-visible:outline-none"
+            >
+              <XenditPaymentCard />
             </TabsContent>
           </Tabs>
         )}
