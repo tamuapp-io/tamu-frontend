@@ -566,6 +566,9 @@ export interface ReportSummary {
   by_day: ReportDailyRow[];
   /** Party-size histogram, ascending by party_size. */
   by_party_size: { party_size: number; count: number }[];
+  /** Treatments booked, most-booked first. Spa/wellness only — empty for
+   *  verticals with no service catalog. */
+  by_service?: { service_id: string; name: string; count: number }[];
 }
 
 export interface ReportDailyRow {

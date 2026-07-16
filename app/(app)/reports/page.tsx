@@ -23,6 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/lib/api/client";
 import { fetchReportSummary } from "@/lib/api/reports";
+import { useCategory } from "@/lib/hooks/use-category";
 import { statusLabel, todayISO } from "@/lib/format";
 import type { ReportDailyRow, ReportSummary } from "@/lib/types";
 
@@ -53,6 +54,7 @@ const STATUS_ORDER_FOR_STACK: Array<keyof ReportDailyRow> = [
 ];
 
 export default function ReportsPage() {
+  const { isSpa } = useCategory();
   const to = todayISO();
   const fromDefault = useMemo(() => {
     const d = new Date();
@@ -153,12 +155,21 @@ export default function ReportsPage() {
                 <StatusDonut byStatus={summary.by_status} />
               </ChartCard>
 
-              <ChartCard
-                title="Party-size distribution"
-                subtitle="How many reservations of each size landed in the window."
-              >
-                <PartySizeChart data={summary.by_party_size} />
-              </ChartCard>
+              {isSpa ? (
+                <ChartCard
+                  title="Service type"
+                  subtitle="How many appointments each treatment took in the window."
+                >
+                  <ServiceMixChart data={summary.by_service ?? []} />
+                </ChartCard>
+              ) : (
+                <ChartCard
+                  title="Party-size distribution"
+                  subtitle="How many reservations of each size landed in the window."
+                >
+                  <PartySizeChart data={summary.by_party_size} />
+                </ChartCard>
+              )}
             </div>
           </>
         )}
@@ -336,6 +347,64 @@ function StatusDonut({ byStatus }: { byStatus: Record<string, number> }) {
           formatter={(value) => statusLabel(String(value))}
         />
       </PieChart>
+    </ResponsiveContainer>
+  );
+}
+
+/**
+ * Spa/wellness counterpart to the party-size histogram: which treatments were
+ * booked. Laid out horizontally because service names are long text, unlike the
+ * single digits on the party-size axis.
+ */
+function ServiceMixChart({
+  data,
+}: {
+  data: { service_id: string; name: string; count: number }[];
+}) {
+  if (data.length === 0) {
+    return <EmptyChart label="No appointments booked yet." />;
+  }
+
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <BarChart
+        data={data}
+        layout="vertical"
+        margin={{ top: 8, right: 16, left: 8, bottom: 0 }}
+      >
+        <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" horizontal={false} />
+        <XAxis
+          type="number"
+          allowDecimals={false}
+          tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+          tickLine={false}
+          axisLine={{ stroke: "rgba(0,0,0,0.08)" }}
+        />
+        <YAxis
+          type="category"
+          dataKey="name"
+          tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+          tickLine={false}
+          axisLine={false}
+          width={110}
+        />
+        <Tooltip
+          cursor={{ fill: "rgba(0,0,0,0.04)" }}
+          contentStyle={{
+            background: "var(--card)",
+            border: "1px solid var(--border)",
+            borderRadius: 8,
+            fontSize: 12,
+          }}
+          formatter={(value) => [value, "Appointments"]}
+        />
+        <Bar
+          dataKey="count"
+          fill="#d6b98a"
+          stroke="#a87d52"
+          radius={[0, 4, 4, 0]}
+        />
+      </BarChart>
     </ResponsiveContainer>
   );
 }
