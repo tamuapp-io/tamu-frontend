@@ -34,6 +34,10 @@ export default function ImpersonatePage() {
           token,
           user: res.data.user,
           tenant: res.data.tenant,
+          // Always overwrite: the store is persisted, so without this the
+          // operator's own venue list would linger into the impersonated
+          // session and offer venues this token can't reach.
+          tenants: res.data.tenants ?? [],
         });
         router.replace("/home");
       })
