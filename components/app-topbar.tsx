@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { LogOut, Menu, MessageCircle, Plus, Settings as SettingsIcon, User, X } from "lucide-react";
 import { AppNotificationsMenu } from "@/components/app-notifications-menu";
 import { TamuLogo } from "@/components/tamu-brand";
+import { TenantSwitcher } from "@/components/tenant-switcher";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -103,6 +104,8 @@ export function AppTopbar({ breadcrumbs, primaryAction }: AppTopbarProps) {
       </nav>
 
       <div className="ml-auto flex items-center gap-3">
+        <TenantSwitcher />
+
         <Link
           href="/messages"
           aria-label="WhatsApp Chat"

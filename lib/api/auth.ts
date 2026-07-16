@@ -5,6 +5,7 @@ import type {
   LoginPayload,
   RegisterPayload,
   Tenant,
+  TenantMembershipSummary,
   User,
 } from "@/lib/types";
 
@@ -14,7 +15,24 @@ export const authApi = {
   login: (payload: LoginPayload) =>
     api.post<ItemEnvelope<AuthResponse>>("auth/login", payload, { auth: false }),
   logout: () => api.post<ItemEnvelope<{ logged_out: true }>>("auth/logout"),
-  me: () => api.get<ItemEnvelope<{ user: User; tenant: Tenant | null }>>("auth/me"),
+  me: () =>
+    api.get<
+      ItemEnvelope<{
+        user: User;
+        tenant: Tenant | null;
+        tenants?: TenantMembershipSummary[];
+      }>
+    >("auth/me"),
+
+  /**
+   * Move to another venue this account belongs to. Returns a NEW token scoped
+   * to that venue — the caller must swap it in and drop any cached data from
+   * the previous venue.
+   */
+  switchTenant: (tenantId: string) =>
+    api.post<ItemEnvelope<AuthResponse>>("auth/tenants/switch", {
+      tenant_id: tenantId,
+    }),
   patchProfile: (payload: { name: string; email: string }) =>
     api.patch<ItemEnvelope<{ user: User }>>("auth/profile", payload),
   patchPassword: (payload: {

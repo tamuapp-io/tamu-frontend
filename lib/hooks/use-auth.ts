@@ -9,6 +9,7 @@ export function useCurrentUser() {
   const token = useAuthStore((s) => s.token);
   const setUser = useAuthStore((s) => s.setUser);
   const setTenant = useAuthStore((s) => s.setTenant);
+  const setTenants = useAuthStore((s) => s.setTenants);
 
   return useQuery({
     queryKey: ["auth", "me", token],
@@ -18,6 +19,7 @@ export function useCurrentUser() {
       const res = await authApi.me();
       setUser(res.data.user);
       setTenant(res.data.tenant);
+      if (res.data.tenants) setTenants(res.data.tenants);
       return res.data.user;
     },
   });
@@ -33,8 +35,40 @@ export function useLogin() {
       return res.data;
     },
     onSuccess: (data) => {
-      setSession({ token: data.token, user: data.user, tenant: data.tenant });
+      setSession({
+        token: data.token,
+        user: data.user,
+        tenant: data.tenant,
+        tenants: data.tenants,
+      });
       qc.invalidateQueries();
+    },
+  });
+}
+
+/**
+ * Move to another venue. The backend hands back a token scoped to that venue,
+ * so we swap the token and then CLEAR the cache outright — invalidating isn't
+ * enough, since every cached list still holds the previous venue's rows and
+ * would flash them before refetching.
+ */
+export function useSwitchTenant() {
+  const setSession = useAuthStore((s) => s.setSession);
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (tenantId: string) => {
+      const res = await authApi.switchTenant(tenantId);
+      return res.data;
+    },
+    onSuccess: (data) => {
+      setSession({
+        token: data.token,
+        user: data.user,
+        tenant: data.tenant,
+        tenants: data.tenants,
+      });
+      qc.clear();
     },
   });
 }

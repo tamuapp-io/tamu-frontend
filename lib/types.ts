@@ -61,10 +61,20 @@ export interface User {
   created_at?: string;
 }
 
+/** A venue this account can act on, with the role it holds there. */
+export interface TenantMembershipSummary {
+  id: string;
+  name: string;
+  slug: string;
+  role: string | null;
+}
+
 export interface AuthResponse {
   user: User;
   tenant: Tenant | null;
   token: string;
+  /** Every venue this account can switch to. Absent on older backends. */
+  tenants?: TenantMembershipSummary[];
 }
 
 export interface Table {

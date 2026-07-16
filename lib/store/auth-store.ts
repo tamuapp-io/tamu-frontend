@@ -2,16 +2,24 @@
 
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import type { Tenant, User } from "@/lib/types";
+import type { Tenant, TenantMembershipSummary, User } from "@/lib/types";
 
 interface AuthState {
   token: string | null;
   user: User | null;
   tenant: Tenant | null;
+  /** Every venue this account can switch to. Drives the topbar picker. */
+  tenants: TenantMembershipSummary[];
   hydrated: boolean;
-  setSession: (payload: { token: string; user: User; tenant: Tenant | null }) => void;
+  setSession: (payload: {
+    token: string;
+    user: User;
+    tenant: Tenant | null;
+    tenants?: TenantMembershipSummary[];
+  }) => void;
   setUser: (user: User) => void;
   setTenant: (tenant: Tenant | null) => void;
+  setTenants: (tenants: TenantMembershipSummary[]) => void;
   mergeTenant: (patch: Partial<Tenant>) => void;
   clear: () => void;
 }
@@ -22,16 +30,24 @@ export const useAuthStore = create<AuthState>()(
       token: null,
       user: null,
       tenant: null,
+      tenants: [],
       hydrated: false,
-      setSession: ({ token, user, tenant }) =>
-        set({ token, user, tenant, hydrated: true }),
+      setSession: ({ token, user, tenant, tenants }) =>
+        set((s) => ({
+          token,
+          user,
+          tenant,
+          tenants: tenants ?? s.tenants,
+          hydrated: true,
+        })),
       setUser: (user) => set({ user }),
       setTenant: (tenant) => set({ tenant }),
+      setTenants: (tenants) => set({ tenants }),
       mergeTenant: (patch) =>
         set((s) =>
           s.tenant ? { tenant: { ...s.tenant, ...patch } } : {},
         ),
-      clear: () => set({ token: null, user: null, tenant: null }),
+      clear: () => set({ token: null, user: null, tenant: null, tenants: [] }),
     }),
     {
       name: "tamu-auth",
