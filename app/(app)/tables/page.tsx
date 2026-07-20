@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { KpiStat } from "@/components/kpi-stat";
-import { FloorPlanPreview } from "@/components/floor-plan-preview";
+import { SectionedFloorPlan } from "@/components/sectioned-floor-plan";
 import { TableEditSheet } from "@/components/table-edit-sheet";
 import { ManageSectionsDialog } from "@/components/manage-sections-dialog";
 import {
@@ -365,7 +365,13 @@ export default function TablesPage() {
           </TabsContent>
 
           <TabsContent value="floor" className="mt-4">
-            <FloorPlanPreview tables={tables} interactive onTableClick={startEdit} />
+            {/* One floor plan per section — adding a section adds a floor plan. */}
+            <SectionedFloorPlan
+              tables={tables}
+              floorSections={floorSections}
+              interactive
+              onTableClick={startEdit}
+            />
           </TabsContent>
         </Tabs>
       </main>
