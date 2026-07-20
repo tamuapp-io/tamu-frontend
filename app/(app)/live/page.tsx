@@ -7,14 +7,14 @@ import { KpiStat } from "@/components/kpi-stat";
 import { ServiceTimeline } from "@/components/service-timeline";
 import { SpaServiceTimeline } from "@/components/spa-service-timeline";
 import { SpaRoomsBoard } from "@/components/spa-rooms-board";
-import { FloorPlanPreview } from "@/components/floor-plan-preview";
+import { SectionedFloorPlan } from "@/components/sectioned-floor-plan";
 import { WalkinDialog } from "@/components/walkin-dialog";
 import { SpaWalkinDialog } from "@/components/spa-walkin-dialog";
 import { ReservationDetailDrawer } from "@/components/reservation-detail-drawer";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useReservationsList } from "@/lib/hooks/use-reservations";
-import { useTablesList } from "@/lib/hooks/use-tables";
+import { useTablesList, useFloorSections } from "@/lib/hooks/use-tables";
 import { useTherapistsList, useRoomsList } from "@/lib/hooks/use-spa-catalog";
 import { useCategory } from "@/lib/hooks/use-category";
 import { useTenantTimezone } from "@/lib/hooks/use-tenant-timezone";
@@ -41,6 +41,7 @@ export default function LivePage() {
 
   const reservationsQuery = useReservationsList({ date, per_page: 200 });
   const tablesQuery = useTablesList({ per_page: 200 });
+  const { data: floorSections = [] } = useFloorSections();
   const therapistsQuery = useTherapistsList();
   const roomsQuery = useRoomsList();
 
@@ -289,7 +290,13 @@ export default function LivePage() {
                 tenantTimeZone={displayTz}
                 onReservationClick={(r) => setOpenId(r.id)}
               />
-              <FloorPlanPreview tables={tables} reservations={reservations} />
+              {/* One floor plan per section; sections with no tables are hidden. */}
+              <SectionedFloorPlan
+                tables={tables}
+                reservations={reservations}
+                floorSections={floorSections}
+                hideEmpty
+              />
             </>
           )}
         </div>
