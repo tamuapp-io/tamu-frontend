@@ -23,7 +23,7 @@ import { useReservationsList } from "@/lib/hooks/use-reservations";
 import { useTablesList } from "@/lib/hooks/use-tables";
 import { useTenantTimezone } from "@/lib/hooks/use-tenant-timezone";
 import { instantFromApi, todayISOInTz } from "@/lib/format";
-import type { Reservation, Table } from "@/lib/types";
+import type { Table } from "@/lib/types";
 
 const CANVAS_PAD = 48;
 
@@ -59,6 +59,8 @@ interface TableFloorPickerProps {
   currentTableId?: string;
   /** Override the day fetched for conflict math; defaults to reservedAt-in-tenant-TZ. */
   dateOverride?: string;
+  /** Restrict the floor plan to one section. `null`/`"all"`/undefined shows every table. */
+  section?: string | null;
 }
 
 export function TableFloorPicker({
@@ -71,6 +73,7 @@ export function TableFloorPicker({
   excludeTableId,
   currentTableId,
   dateOverride,
+  section,
 }: TableFloorPickerProps) {
   const tz = useTenantTimezone();
   const targetStart = useMemo(() => instantFromApi(reservedAt), [reservedAt]);
@@ -129,7 +132,13 @@ export function TableFloorPicker({
     excludeTableId,
   ]);
 
-  const tables: Table[] = useMemo(() => tablesQuery.data ?? [], [tablesQuery.data]);
+  // One floor plan per section: when a section is chosen, only its tables lay
+  // out on the canvas (mirrors the sectioned floor plan on Live/Tables).
+  const tables: Table[] = useMemo(() => {
+    const all = tablesQuery.data ?? [];
+    if (!section || section === "all") return all;
+    return all.filter((t) => (t.section ?? "").trim() === section);
+  }, [tablesQuery.data, section]);
 
   const layoutCells = useMemo(() => floorLayoutCells(tables), [tables]);
 
@@ -169,9 +178,12 @@ export function TableFloorPicker({
   const loading = tablesQuery.isPending || reservationsQuery.isPending;
 
   if (tables.length === 0 && !loading) {
+    const scoped = section && section !== "all";
     return (
-      <div className="flex h-48 items-center justify-center rounded-lg border border-dashed border-border bg-muted/20 text-xs text-muted-foreground">
-        No tables yet — add some in Tables before seating guests here.
+      <div className="flex h-48 items-center justify-center rounded-lg border border-dashed border-border bg-muted/20 px-4 text-center text-xs text-muted-foreground">
+        {scoped
+          ? `No tables in ${section}. Pick another section or add tables to it in Tables.`
+          : "No tables yet — add some in Tables before seating guests here."}
       </div>
     );
   }
