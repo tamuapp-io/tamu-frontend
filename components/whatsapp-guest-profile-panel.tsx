@@ -1,18 +1,14 @@
 "use client";
 
-import type { ReactNode } from "react";
 import Link from "next/link";
 import { UserRound } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDateInTz } from "@/lib/format";
-import type { GuestProfile, WhatsappConversation } from "@/lib/types";
-import {
-  // guestBookingLabel,
-  isReturningGuest,
-  ReturningGuestBadge,
-} from "@/components/returning-guest-badge";
+import type { WhatsappConversation } from "@/lib/types";
+import { ReturningGuestBadge } from "@/components/returning-guest-badge";
+import { GuestStats, ProfileField } from "@/components/guest-profile-fields";
 import { WhatsappContactAvatar } from "@/components/whatsapp-contact-avatar";
 
 function displayPhone(phone: string): string {
@@ -24,43 +20,6 @@ function displayName(conversation: WhatsappConversation): string {
     conversation.contact_name?.trim() ||
     conversation.guest?.name?.trim() ||
     displayPhone(conversation.phone_e164)
-  );
-}
-
-function ProfileField({
-  label,
-  value,
-}: {
-  label: string;
-  value: ReactNode;
-}) {
-  return (
-    <div className="space-y-0.5">
-      <dt className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-        {label}
-      </dt>
-      <dd className="text-sm text-foreground">{value}</dd>
-    </div>
-  );
-}
-
-function GuestStats({ guest }: { guest: GuestProfile }) {
-  return (
-    <dl className="grid grid-cols-2 gap-3">
-      <ProfileField label="Bookings" value={guest.total_bookings ?? 0} />
-      <ProfileField label="Visits" value={guest.visit_count ?? 0} />
-      <ProfileField label="No-shows" value={guest.no_show_count ?? 0} />
-      <ProfileField
-        label="Status"
-        value={
-          isReturningGuest(guest.total_bookings) ? (
-            <span className="font-medium">Returning guest</span>
-          ) : (
-            <span className="text-muted-foreground">First-time</span>
-          )
-        }
-      />
-    </dl>
   );
 }
 
