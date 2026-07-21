@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select";
 import { TableFloorPicker } from "@/components/table-floor-picker";
 import { useCreateReservation } from "@/lib/hooks/use-reservations";
+import { useTablesList, useFloorSections } from "@/lib/hooks/use-tables";
 import { useTenantTimezone } from "@/lib/hooks/use-tenant-timezone";
 import { ApiError } from "@/lib/api/client";
 import { formatDateInTz, formatTimeInTz } from "@/lib/format";
@@ -42,10 +43,39 @@ export function WalkinDialog({ open, onOpenChange, timeZone: timeZoneProp }: Wal
 
   const [partySize, setPartySize] = useState(2);
   const [tableId, setTableId] = useState<string | null>(null);
+  const [section, setSection] = useState<string>("all");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [requests, setRequests] = useState("");
   const [duration, setDuration] = useState(90);
+
+  const { data: floorSections = [] } = useFloorSections();
+  const { data: tables = [] } = useTablesList({});
+
+  // Sections that actually hold tables (each is its own floor plan) — managed
+  // sections first in their configured order, then any legacy section still
+  // present on a table.
+  const sectionOptions = useMemo(() => {
+    const withTables = new Set(
+      tables.map((t) => (t.section ?? "").trim()).filter((s) => s !== ""),
+    );
+    const ordered: string[] = [];
+    const seen = new Set<string>();
+    for (const s of floorSections) {
+      if (s.is_active === false) continue;
+      if (withTables.has(s.name) && !seen.has(s.name)) {
+        ordered.push(s.name);
+        seen.add(s.name);
+      }
+    }
+    for (const name of withTables) {
+      if (!seen.has(name)) {
+        ordered.push(name);
+        seen.add(name);
+      }
+    }
+    return ordered;
+  }, [floorSections, tables]);
 
   // Stable ISO instant per-open so the picker doesn't refetch every render.
   // We pin it when the dialog opens; if a walk-in lingers for > a few minutes
@@ -66,6 +96,7 @@ export function WalkinDialog({ open, onOpenChange, timeZone: timeZoneProp }: Wal
   function reset() {
     setPartySize(2);
     setTableId(null);
+    setSection("all");
     setName("");
     setPhone("");
     setRequests("");
@@ -173,16 +204,40 @@ export function WalkinDialog({ open, onOpenChange, timeZone: timeZoneProp }: Wal
           <div className="space-y-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <Label className="text-sm font-medium">Pick a table</Label>
-              <Button
-                type="button"
-                variant={tableId === null ? "accent" : "outline"}
-                size="sm"
-                className="h-8"
-                onClick={() => setTableId(null)}
-              >
-                <Sparkles className="mr-1.5 h-3.5 w-3.5" />
-                {tableId === null ? "Auto-assigning" : "Auto-assign instead"}
-              </Button>
+              <div className="flex items-center gap-2">
+                {sectionOptions.length > 0 && (
+                  <Select
+                    value={section}
+                    onValueChange={(v) => {
+                      setSection(v);
+                      // The picked table may not live in the new section.
+                      setTableId(null);
+                    }}
+                  >
+                    <SelectTrigger className="h-8 w-[150px]" aria-label="Floor section">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All sections</SelectItem>
+                      {sectionOptions.map((s) => (
+                        <SelectItem key={s} value={s}>
+                          {s}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                <Button
+                  type="button"
+                  variant={tableId === null ? "accent" : "outline"}
+                  size="sm"
+                  className="h-8"
+                  onClick={() => setTableId(null)}
+                >
+                  <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                  {tableId === null ? "Auto-assigning" : "Auto-assign instead"}
+                </Button>
+              </div>
             </div>
             <TableFloorPicker
               reservedAt={reservedAtIso}
@@ -190,6 +245,7 @@ export function WalkinDialog({ open, onOpenChange, timeZone: timeZoneProp }: Wal
               partySize={partySize}
               value={tableId}
               onChange={setTableId}
+              section={section}
             />
             {fieldErrors.table_id?.[0] && (
               <p className="text-xs text-destructive">{fieldErrors.table_id[0]}</p>
