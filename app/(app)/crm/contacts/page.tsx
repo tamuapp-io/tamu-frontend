@@ -21,7 +21,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { toast } from "@/components/ui/toaster";
+import { CrmContactPanel } from "@/components/crm-contact-panel";
 import { ApiError } from "@/lib/api/client";
 import {
   fetchCrmContacts,
@@ -29,6 +36,9 @@ import {
   updateContactBirthday,
   updateContactConsent,
 } from "@/lib/api/crm";
+import { useMediaQuery } from "@/lib/hooks/use-media-query";
+import { useTenantTimezone } from "@/lib/hooks/use-tenant-timezone";
+import { cn } from "@/lib/utils";
 import type { GuestProfile } from "@/lib/types";
 
 const MONTHS_SHORT = [
@@ -126,6 +136,9 @@ function ContactsInner() {
   const params = useSearchParams();
   const segment = params.get("segment") || "all";
   const [q, setQ] = useState("");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const isDesktop = useMediaQuery("(min-width: 1024px)");
+  const timezone = useTenantTimezone();
 
   const debounced = useMemo(() => q.trim(), [q]);
 
@@ -158,6 +171,10 @@ function ContactsInner() {
 
   const segments = overview.data?.segments ?? [];
   const rows: GuestProfile[] = list.data ?? [];
+
+  // Derive the selected guest from the live list so consent/birthday edits made
+  // in the table (or panel) flow straight into the open panel.
+  const selected = rows.find((r) => r.id === selectedId) ?? null;
 
   function setSegment(next: string) {
     const qs = next === "all" ? "" : `?segment=${next}`;
@@ -202,6 +219,8 @@ function ContactsInner() {
           </p>
         )}
 
+        <div className="flex gap-4">
+          <div className="min-w-0 flex-1">
         {list.isPending ? (
           <div className="space-y-2">
             {Array.from({ length: 6 }).map((_, i) => (
@@ -229,7 +248,15 @@ function ContactsInner() {
               </thead>
               <tbody className="divide-y divide-border">
                 {rows.map((c) => (
-                  <tr key={c.id} className="hover:bg-muted/30">
+                  <tr
+                    key={c.id}
+                    onClick={() => setSelectedId(c.id)}
+                    aria-selected={selectedId === c.id}
+                    className={cn(
+                      "cursor-pointer hover:bg-muted/30",
+                      selectedId === c.id && "bg-muted/60",
+                    )}
+                  >
                     <td className="px-4 py-2.5 font-medium">
                       <span className="flex items-center gap-2">
                         {c.name}
@@ -241,10 +268,11 @@ function ContactsInner() {
                     <td className="px-4 py-2.5 text-muted-foreground">{c.email || "—"}</td>
                     <td className="px-4 py-2.5 text-muted-foreground">{c.phone || "—"}</td>
                     <td className="px-4 py-2.5 text-right tabular-nums">{c.visit_count ?? 0}</td>
-                    <td className="px-4 py-2.5">
+                    {/* Interactive cells don't select the row. */}
+                    <td className="px-4 py-2.5" onClick={(e) => e.stopPropagation()}>
                       <BirthdayCell guest={c} />
                     </td>
-                    <td className="px-4 py-2.5 text-center">
+                    <td className="px-4 py-2.5 text-center" onClick={(e) => e.stopPropagation()}>
                       <Switch
                         checked={c.whatsapp_consent === true}
                         disabled={!c.phone || consent.isPending}
@@ -254,7 +282,7 @@ function ContactsInner() {
                         aria-label="WhatsApp marketing consent"
                       />
                     </td>
-                    <td className="px-4 py-2.5 text-center">
+                    <td className="px-4 py-2.5 text-center" onClick={(e) => e.stopPropagation()}>
                       <Switch
                         checked={c.email_consent === true}
                         disabled={!c.email || consent.isPending}
@@ -271,7 +299,47 @@ function ContactsInner() {
             </table>
           </div>
         )}
+          </div>
+
+          {/* Persistent detail panel on desktop, WhatsApp-inbox style. */}
+          <aside className="sticky top-4 hidden max-h-[calc(100vh-8rem)] w-[340px] shrink-0 flex-col self-start overflow-hidden rounded-xl border border-border bg-card lg:flex">
+            <div className="shrink-0 border-b border-border px-4 py-3">
+              <h2 className="text-sm font-semibold">Guest profile</h2>
+              <p className="text-xs text-muted-foreground">CRM details for this contact</p>
+            </div>
+            <div className="flex min-h-0 flex-1 flex-col">
+              <CrmContactPanel
+                guest={selected}
+                timezone={timezone}
+                onToggleConsent={(id, payload) => consent.mutate({ id, payload })}
+                consentPending={consent.isPending}
+              />
+            </div>
+          </aside>
+        </div>
       </div>
+
+      {/* On smaller screens the panel slides in from the right instead. */}
+      <Sheet
+        open={!isDesktop && !!selectedId}
+        onOpenChange={(open) => {
+          if (!open) setSelectedId(null);
+        }}
+      >
+        <SheetContent side="right" className="w-full max-w-sm p-0">
+          <SheetHeader className="border-b border-border px-4 py-3 text-left">
+            <SheetTitle>Guest profile</SheetTitle>
+          </SheetHeader>
+          <div className="flex min-h-0 flex-1 flex-col">
+            <CrmContactPanel
+              guest={selected}
+              timezone={timezone}
+              onToggleConsent={(id, payload) => consent.mutate({ id, payload })}
+              consentPending={consent.isPending}
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
     </>
   );
 }
