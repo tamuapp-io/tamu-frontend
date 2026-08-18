@@ -44,6 +44,8 @@ export interface Tenant {
   name: string;
   slug: string;
   plan: string;
+  /** Server-computed paid capabilities (plan features + per-venue add-ons). */
+  features?: string[];
   /** Business vertical: restaurant | cafe | spa | wellness | … */
   category?: string;
   category_config?: CategoryConfig;
@@ -88,6 +90,8 @@ export interface Table {
   status: TableStatus;
   online_bookable: boolean;
   priority: number;
+  /** TRUE cents (IDR × 100). Null inherits the section default. */
+  price_cents?: number | null;
   position: {
     x: number;
     y: number;
@@ -95,6 +99,16 @@ export interface Table {
     height: number;
     rotation: number;
   };
+  /** Placement on the section's venue map, in SVG viewBox units.
+   *  Null = not yet placed. Distinct from `position`, which is the staff
+   *  floor-plan grid and uses a different coordinate space entirely. */
+  map_position?: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    rotation: number;
+  } | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -267,6 +281,8 @@ export interface CreateTablePayload {
   status?: TableStatus;
   online_bookable?: boolean;
   priority?: number;
+  /** TRUE cents (IDR × 100). */
+  price_cents?: number | null;
   pos_x?: number;
   pos_y?: number;
   width?: number;
@@ -328,6 +344,8 @@ export interface PublicTenant {
   terminology?: CategoryTerminology;
   uses_party_size?: boolean;
   waitlist: PublicTenantWaitlistProfile;
+  /** Derived capability — true when guests may pick their table from a map. */
+  venue_map?: { enabled: boolean };
   custom_booking_fields: CustomBookingField[];
   description?: string | null;
   address?: string | null;
@@ -399,6 +417,8 @@ export interface PublicReservation {
 
 export interface PublicCreateReservationPayload {
   reserved_at: string;
+  /** Guest-chosen table — honoured only for venues with the venue_map feature. */
+  table_id?: string;
   party_size?: number;
   duration_mins?: number;
   service_id?: string;
@@ -1012,4 +1032,104 @@ export interface FloorSection {
   display_order: number;
   is_active: boolean;
   tables_count?: number;
+  /** Guests may pick tables here (venue_map feature). */
+  is_bookable_online?: boolean;
+  /** TRUE cents (IDR × 100) — default for tables in this section. */
+  default_price_cents?: number | null;
+  description?: string | null;
+}
+
+/* ── Venue map (paid `venue_map` feature) ─────────────────────────────── */
+
+import type { Bounds, Point } from "@/lib/geometry";
+
+/** The uploaded artwork (SVG or PNG) and its intrinsic coordinate space. */
+export interface VenueMapAssetRef {
+  url: string;
+  width: number;
+  height: number;
+  view_box: string;
+}
+
+/** An area outlined on the venue map, in that map's coordinate space. */
+export interface VenueMapArea {
+  /** Polygon vertices. Null until staff outline the section. */
+  polygon: Point[] | null;
+  /** Derived bounding box — what the guest map zooms to. */
+  bounds: Bounds | null;
+}
+
+export interface VenueMapSectionSummary extends VenueMapArea {
+  id: string;
+  name: string;
+  description?: string | null;
+  /** TRUE cents (IDR × 100). */
+  price_from_cents?: number | null;
+}
+
+/** The area-picking step: ONE venue map plus every bookable area drawn on it. */
+export interface VenueMapOverview {
+  enabled: boolean;
+  map: VenueMapAssetRef | null;
+  sections: VenueMapSectionSummary[];
+}
+
+export type VenueMapTableState = "available" | "booked" | "unfit";
+
+export interface VenueMapTable {
+  id: string;
+  name: string;
+  shape: string;
+  min_capacity: number;
+  max_capacity: number;
+  /** TRUE cents (IDR × 100). */
+  price_cents: number;
+  state: VenueMapTableState;
+  map_position: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    rotation: number;
+  };
+}
+
+/**
+ * The spot-picking step. Carries no artwork on purpose — it is the same venue
+ * map the area step already loaded, and re-sending it would make the client
+ * re-fetch and blink between steps.
+ */
+export interface VenueMapSectionTables {
+  enabled: boolean;
+  section: ({
+    id: string;
+    name: string;
+    description?: string | null;
+  } & VenueMapArea) | null;
+  tables: VenueMapTable[];
+}
+
+/** One stored map in the staff editor snapshot. */
+export interface VenueMapStaffAsset {
+  id: string;
+  /** "image/svg+xml" | "image/png" — units are viewBox units or pixels. */
+  mime: string;
+  width: number;
+  height: number;
+  view_box: string;
+}
+
+/** Staff editor snapshot: the one venue map plus every section's area. */
+export interface VenueMapStaffConfig {
+  map: VenueMapStaffAsset | null;
+  sections: Array<{
+    id: string;
+    name: string;
+    is_active: boolean;
+    is_bookable_online: boolean;
+    default_price_cents: number | null;
+    description: string | null;
+    polygon: Point[] | null;
+    bounds: Bounds | null;
+  }>;
 }

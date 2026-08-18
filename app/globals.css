@@ -64,15 +64,15 @@
   --secondary-foreground: #2b1c12;
 
   --muted: #ebe0cb;
-  --muted-foreground: #8a6f58;
+  --muted-foreground: #77604c; /* AA: 5.03 on bg, 4.51 on muted */
 
   --accent: #d6b98a;
   --accent-foreground: #2b1c12;
 
-  --destructive: #b25d40;
+  --destructive: #a3553b; /* AA: 4.54 with --destructive-foreground */
   --destructive-foreground: #f5ebdc;
 
-  --warning: #c99358;
+  --warning: #9f6b33; /* AA: 4.54 with white foreground */
   --warning-foreground: #ffffff;
 
   --info: #8a6f58;
@@ -215,4 +215,23 @@
   .pill.noshow .dot { background: var(--status-noshow); }
   .pill.waitlisted  { background: var(--status-waitlisted-bg); color: var(--status-waitlisted-text); }
   .pill.waitlisted .dot{ background: var(--status-waitlisted); }
+}
+
+/*
+ * Reduced motion.
+ *
+ * Staff use this app for whole shifts and guests book on the move; anyone who
+ * has asked their OS to reduce motion should not get transitions, the map's
+ * zoom easing, or spinner churn. Motion that conveys state (a spinner existing
+ * at all) is kept — only its animation is neutralised.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

@@ -129,6 +129,42 @@ function safeJson(text: string): unknown {
   }
 }
 
+/**
+ * Fetch a binary/asset response as an object URL.
+ *
+ * `<img src>` can't carry the Bearer token (or the ngrok skip header), and
+ * staff-scoped assets sit behind auth — so pull the bytes through the same
+ * request path everything else uses and hand back a blob: URL.
+ *
+ * Caller owns the URL: revoke it when the component unmounts.
+ */
+export async function fetchObjectUrl(pathOrUrl: string): Promise<string> {
+  const headers = new Headers({ Accept: "image/svg+xml,*/*" });
+
+  try {
+    const host = new URL(API_URL.replace(/\/+$/, "")).hostname;
+    if (host.endsWith(".ngrok-free.app") || host.endsWith(".ngrok.io")) {
+      headers.set("ngrok-skip-browser-warning", "true");
+    }
+  } catch {
+    /* invalid NEXT_PUBLIC_API_URL — skip */
+  }
+
+  const token = getAuthToken();
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+
+  // Accept either an API-relative path or an absolute URL (the public venue-map
+  // payload returns absolute asset URLs).
+  const target = /^https?:\/\//i.test(pathOrUrl) ? pathOrUrl : buildUrl(pathOrUrl).toString();
+
+  const res = await fetch(target, { headers });
+  if (!res.ok) {
+    throw new ApiError({ message: `Could not load asset (${res.status})` }, res.status);
+  }
+
+  return URL.createObjectURL(await res.blob());
+}
+
 export const api = {
   get: <T>(path: string, options?: RequestOptions) => request<T>("GET", path, options),
   post: <T>(path: string, body?: unknown, options?: RequestOptions) =>

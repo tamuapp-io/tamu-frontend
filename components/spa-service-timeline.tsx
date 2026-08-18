@@ -1,8 +1,11 @@
 "use client";
 
 import { useMemo } from "react";
+import { LocateFixed } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Reservation, Therapist } from "@/lib/types";
+import { useNowTick } from "@/lib/hooks/use-now-tick";
+import { useTimelineFollow } from "@/lib/hooks/use-timeline-follow";
 import {
   initials,
   statusClass,
@@ -19,6 +22,7 @@ interface SpaServiceTimelineProps {
   resourceLabel?: string;
   startHour?: number;
   endHour?: number;
+  /** Pins the now line to a fixed instant; omit to track the live clock. */
   now?: Date;
   onReservationClick?: (reservation: Reservation) => void;
 }
@@ -26,6 +30,7 @@ interface SpaServiceTimelineProps {
 const HOUR_COL_WIDTH = 64;
 const ROW_HEIGHT = 40;
 const ROW_GAP = 6;
+const LABEL_WIDTH = 160;
 
 export function SpaServiceTimeline({
   reservations,
@@ -34,9 +39,12 @@ export function SpaServiceTimeline({
   resourceLabel = "Therapist",
   startHour = 9,
   endHour = 21,
-  now = new Date(),
+  now: nowProp,
   onReservationClick,
 }: SpaServiceTimelineProps) {
+  // Null until mounted (see useNowTick) — the now line simply isn't drawn yet.
+  const tick = useNowTick();
+  const now = nowProp ?? tick;
   const hours = endHour - startHour;
   const minutesShown = hours * 60;
   const pxPerMinute = HOUR_COL_WIDTH / 60;
@@ -88,10 +96,16 @@ export function SpaServiceTimeline({
   const widthFor = (mins: number) => Math.max(32, mins * pxPerMinute - 4);
 
   const nowOffset = (() => {
+    if (!now) return null;
     const diff = tenantZonedElapsedMinutes(now, tenantTimeZone, startHour);
     if (diff < 0 || diff > minutesShown) return null;
     return diff * pxPerMinute;
   })();
+
+  const { scrollRef, following, jumpToNow, canFollow, scrollHandlers } = useTimelineFollow(
+    nowOffset,
+    LABEL_WIDTH,
+  );
 
   if (lanes.length === 0) {
     return (
@@ -102,22 +116,32 @@ export function SpaServiceTimeline({
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
-      <div className="grid grid-cols-[160px_1fr] border-b border-border bg-muted/30">
-        <div className="px-4 py-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-          {resourceLabel}
-        </div>
-        <div className="overflow-x-auto">
-          <div
-            className="flex"
-            style={{ width: hours * HOUR_COL_WIDTH, minWidth: hours * HOUR_COL_WIDTH }}
-          >
+    <div className="relative overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+      {/* One scroller for ruler and lanes together. Two of them (the old shape)
+          drift apart the moment either is scrolled, putting every bar under the
+          wrong hour label. The row-label column is frozen with `sticky` instead. */}
+      <div
+        ref={scrollRef}
+        {...scrollHandlers}
+        tabIndex={0}
+        role="region"
+        aria-label={`${resourceLabel} schedule timeline`}
+        className="overflow-x-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+      >
+        <div style={{ width: LABEL_WIDTH + hours * HOUR_COL_WIDTH }}>
+          <div className="flex border-b border-border bg-muted/30">
+            <div
+              className="sticky left-0 z-30 shrink-0 bg-card px-4 py-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground"
+              style={{ width: LABEL_WIDTH }}
+            >
+              {resourceLabel}
+            </div>
             {Array.from({ length: hours }).map((_, i) => {
               const h = startHour + i;
               return (
                 <div
                   key={h}
-                  className="border-l border-border px-2 py-2 text-[11px] font-medium text-muted-foreground tabular-nums first:border-l-0"
+                  className="shrink-0 border-l border-border px-2 py-2 text-[11px] font-medium text-muted-foreground tabular-nums"
                   style={{ width: HOUR_COL_WIDTH }}
                 >
                   {String(h).padStart(2, "0")}:00
@@ -125,53 +149,52 @@ export function SpaServiceTimeline({
               );
             })}
           </div>
-        </div>
-      </div>
 
-      <div className="grid grid-cols-[160px_1fr]">
-        <div className="border-r border-border bg-muted/10">
-          {lanes.map((lane) => (
+          <div className="flex">
             <div
-              key={lane.id}
-              className="flex items-center gap-2 px-4 text-[12px]"
-              style={{ height: ROW_HEIGHT + ROW_GAP }}
+              className="sticky left-0 z-30 shrink-0 border-r border-border bg-card"
+              style={{ width: LABEL_WIDTH }}
             >
-              <span className="font-medium text-foreground">
-                {lane.therapist?.name ?? "Unassigned"}
-              </span>
+              {lanes.map((lane) => (
+                <div
+                  key={lane.id}
+                  className="flex items-center gap-2 px-4 text-[12px]"
+                  style={{ height: ROW_HEIGHT + ROW_GAP }}
+                >
+                  <span className="font-medium text-foreground">
+                    {lane.therapist?.name ?? "Unassigned"}
+                  </span>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
 
-        <div className="overflow-x-auto">
-          <div
-            className="relative"
-            style={{
-              width: hours * HOUR_COL_WIDTH,
-              minWidth: hours * HOUR_COL_WIDTH,
-              height: lanes.length * (ROW_HEIGHT + ROW_GAP),
-            }}
-          >
-            {Array.from({ length: hours }).map((_, i) => (
-              <div
-                key={i}
-                className="absolute top-0 bottom-0 border-l border-border first:border-l-0"
-                style={{ left: i * HOUR_COL_WIDTH, width: HOUR_COL_WIDTH }}
-                aria-hidden
-              />
-            ))}
+            <div
+              className="relative shrink-0"
+              style={{
+                width: hours * HOUR_COL_WIDTH,
+                height: lanes.length * (ROW_HEIGHT + ROW_GAP),
+              }}
+            >
+              {Array.from({ length: hours }).map((_, i) => (
+                <div
+                  key={i}
+                  className="absolute top-0 bottom-0 border-l border-border first:border-l-0"
+                  style={{ left: i * HOUR_COL_WIDTH, width: HOUR_COL_WIDTH }}
+                  aria-hidden
+                />
+              ))}
 
-            {nowOffset !== null && (
-              <div
-                className="absolute top-0 bottom-0 z-10 w-px bg-rose-500"
-                style={{ left: nowOffset }}
-                aria-label="Current time"
-              >
-                <span className="absolute -left-[3px] top-0 h-1.5 w-1.5 rounded-full bg-rose-500" />
-              </div>
-            )}
+              {nowOffset !== null && (
+                <div
+                  className="absolute top-0 bottom-0 z-10 w-px bg-rose-500"
+                  style={{ left: nowOffset }}
+                  aria-hidden
+                >
+                  <span className="absolute -left-[3px] top-0 h-1.5 w-1.5 rounded-full bg-rose-500" />
+                </div>
+              )}
 
-            {lanes.map((lane, laneIdx) =>
+              {lanes.map((lane, laneIdx) =>
               lane.items.map((r) => {
                 const start = instantFromApi(r.reserved_at);
                 const left = offsetFor(start);
@@ -216,10 +239,23 @@ export function SpaServiceTimeline({
                   </button>
                 );
               }),
-            )}
+              )}
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Only offered once following is off — otherwise it's a button that does
+          nothing, and the timeline is already where it says it will take you. */}
+      {canFollow && !following && (
+        <button
+          type="button"
+          onClick={jumpToNow}
+          className="absolute bottom-3 right-3 z-40 inline-flex h-9 items-center gap-1.5 rounded-full border border-border bg-card px-3 text-xs font-medium shadow-md transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
+        >
+          <LocateFixed className="h-3.5 w-3.5" aria-hidden /> Jump to now
+        </button>
+      )}
     </div>
   );
 }

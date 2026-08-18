@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { use } from "react";
-import { Calendar, Check, ChevronLeft, ClipboardList, Clock, Users } from "lucide-react";
+import { Calendar, Check, ChevronLeft, ClipboardList, Clock, Minus, Plus, Users } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import Link from "next/link";
 import { TamuLogo } from "@/components/tamu-brand";
@@ -18,6 +18,7 @@ import { useAuthStore } from "@/lib/store/auth-store";
 import { cn } from "@/lib/utils";
 import { formatGuestAssignedTables, ordinal } from "@/lib/format";
 import { PhoneInput } from "@/components/phone-input";
+import { StepSection, StepTable } from "@/components/venue-map-booking-steps";
 import type {
   PublicAvailabilitySlot,
   PublicReservation,
@@ -26,7 +27,7 @@ import type {
   Therapist,
 } from "@/lib/types";
 
-type Step = "service" | "date" | "slot" | "details" | "done";
+type Step = "service" | "date" | "slot" | "section" | "table" | "details" | "done";
 
 interface BookingState {
   service_id: string | null;
@@ -34,6 +35,9 @@ interface BookingState {
   date: string;
   party_size: number;
   slot: PublicAvailabilitySlot | null;
+  section_id: string | null;
+  section_name: string | null;
+  table_id: string | null;
   guest: {
     name: string;
     email: string;
@@ -117,6 +121,9 @@ function PublicBookingFlow({
   venue: PublicTenant;
 }) {
   const venueIsSpa = venue.booking_strategy === "spa";
+  // Map booking is restaurant-only and opt-in per venue. Everything below
+  // falls back to the classic 4-step flow when it's off.
+  const venueHasMap = !venueIsSpa && venue.venue_map?.enabled === true;
 
   const [step, setStep] = useState<Step>(venueIsSpa ? "service" : "date");
   const [confirmation, setConfirmation] = useState<PublicReservation | null>(null);
@@ -126,6 +133,9 @@ function PublicBookingFlow({
     date: todayISO(),
     party_size: 2,
     slot: null,
+    section_id: null,
+    section_name: null,
+    table_id: null,
     guest: { name: "", email: "", phone: "", marketing_opt_in: false, birthday_month: null, birthday_day: null },
     occasion: "",
     special_requests: "",
@@ -134,7 +144,7 @@ function PublicBookingFlow({
 
   return (
     <BookingShell tenant={venue} isSpa={venueIsSpa}>
-      <Stepper step={step} isSpa={venueIsSpa} terminology={venue.terminology} />
+      <Stepper step={step} isSpa={venueIsSpa} hasMap={venueHasMap} terminology={venue.terminology} />
       {step === "service" && venueIsSpa && (
         <StepService
           slug={slug}
@@ -160,6 +170,39 @@ function PublicBookingFlow({
           state={state}
           setState={setState}
           onBack={() => setStep("date")}
+          onNext={() => setStep(venueHasMap ? "section" : "details")}
+        />
+      )}
+      {step === "section" && venueHasMap && (
+        <StepSection
+          slug={slug}
+          selectedId={state.section_id}
+          onSelect={(section) => {
+            // Changing area invalidates any spot chosen in the previous one.
+            setState((s) => ({
+              ...s,
+              section_id: section.id,
+              section_name: section.name,
+              table_id: null,
+            }));
+            setStep("table");
+          }}
+          onBack={() => setStep("slot")}
+        />
+      )}
+      {step === "table" && venueHasMap && state.section_id && state.slot && (
+        <StepTable
+          slug={slug}
+          sectionId={state.section_id}
+          sectionName={state.section_name ?? ""}
+          reservedAt={state.slot.reserved_at_utc}
+          partySize={state.party_size}
+          selectedTableId={state.table_id}
+          onSelect={(table) => setState((s) => ({ ...s, table_id: table?.id ?? null }))}
+          onBack={() => {
+            setState((s) => ({ ...s, table_id: null }));
+            setStep("section");
+          }}
           onNext={() => setStep("details")}
         />
       )}
@@ -169,7 +212,7 @@ function PublicBookingFlow({
           tenant={venue}
           state={state}
           setState={setState}
-          onBack={() => setStep("slot")}
+          onBack={() => setStep(venueHasMap ? "table" : "slot")}
           onSuccess={(r) => {
             setConfirmation(r);
             setStep("done");
@@ -257,6 +300,16 @@ const RESTAURANT_STEPS: { id: Step; label: string }[] = [
   { id: "done", label: "Done" },
 ];
 
+/** Map venues insert the area + spot steps between time and details. */
+const RESTAURANT_MAP_STEPS: { id: Step; label: string }[] = [
+  { id: "date", label: "Date & guests" },
+  { id: "slot", label: "Time" },
+  { id: "section", label: "Area" },
+  { id: "table", label: "Spot" },
+  { id: "details", label: "Details" },
+  { id: "done", label: "Done" },
+];
+
 const SPA_STEPS: { id: Step; label: string }[] = [
   { id: "service", label: "Treatment" },
   { id: "date", label: "Date" },
@@ -268,13 +321,15 @@ const SPA_STEPS: { id: Step; label: string }[] = [
 function Stepper({
   step,
   isSpa,
+  hasMap,
   terminology,
 }: {
   step: Step;
   isSpa?: boolean;
+  hasMap?: boolean;
   terminology?: PublicTenant["terminology"];
 }) {
-  const steps = isSpa ? SPA_STEPS : RESTAURANT_STEPS;
+  const steps = isSpa ? SPA_STEPS : hasMap ? RESTAURANT_MAP_STEPS : RESTAURANT_STEPS;
   const idx = steps.findIndex((s) => s.id === step);
   const partyLabel = terminology?.party ?? "Party size";
 
@@ -480,11 +535,13 @@ function StepDate({
             <Label htmlFor="b-party">
               <Users className="mr-1 inline h-3 w-3" /> {partyLabel}
             </Label>
+            {/* 44px controls — this is a primary action on a phone-first guest flow. */}
             <div className="flex items-center gap-2">
               <Button
                 type="button"
                 variant="outline"
-                size="icon-sm"
+                className="h-11 w-11 shrink-0 p-0"
+                aria-label={`Decrease ${partyLabel.toLowerCase()}`}
                 onClick={() =>
                   setState((s) => ({
                     ...s,
@@ -492,7 +549,7 @@ function StepDate({
                   }))
                 }
               >
-                −
+                <Minus className="h-4 w-4" aria-hidden />
               </Button>
               <Input
                 id="b-party"
@@ -506,12 +563,13 @@ function StepDate({
                     party_size: Math.max(1, Number(e.target.value) || 1),
                   }))
                 }
-                className="text-center"
+                className="h-11 text-center"
               />
               <Button
                 type="button"
                 variant="outline"
-                size="icon-sm"
+                className="h-11 w-11 shrink-0 p-0"
+                aria-label={`Increase ${partyLabel.toLowerCase()}`}
                 onClick={() =>
                   setState((s) => ({
                     ...s,
@@ -519,7 +577,7 @@ function StepDate({
                   }))
                 }
               >
-                +
+                <Plus className="h-4 w-4" aria-hidden />
               </Button>
             </div>
           </div>
@@ -863,6 +921,8 @@ function StepDetails({
               therapist_id: state.therapist_id ?? undefined,
             }
           : { party_size: state.party_size }),
+        // Ignored server-side unless the venue has the venue_map feature.
+        table_id: state.table_id ?? undefined,
         guest: {
           name: state.guest.name,
           email: state.guest.email,
