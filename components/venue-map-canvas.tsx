@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Minus, Plus } from "lucide-react";
+import { Loader2, Minus, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   floorStateFill,
@@ -60,6 +60,12 @@ interface VenueMapCanvasProps {
   onSelect?: (id: string) => void;
   /** Fallback when the venue hasn't uploaded artwork for this scope. */
   emptyLabel?: string;
+  /**
+   * The artwork exists and is being fetched. Distinct from `asset === null`,
+   * which means there is none — showing "no map uploaded" while a replacement
+   * downloads reads as if the upload destroyed it.
+   */
+  loading?: boolean;
   /** Staff editor: drag hotspots to move them, drag their corners to resize. */
   interactive?: boolean;
   /**
@@ -189,6 +195,7 @@ export function VenueMapCanvas({
   selectedId,
   onSelect,
   emptyLabel = "No map uploaded yet.",
+  loading = false,
   interactive = false,
   onTransform,
   areas = [],
@@ -460,7 +467,18 @@ export function VenueMapCanvas({
   if (!asset) {
     return (
       <div className="grid min-h-[280px] place-items-center rounded-xl border border-dashed border-border bg-card p-6 text-center text-sm text-muted-foreground">
-        {emptyLabel}
+        {loading ? (
+          <span
+            className="flex items-center gap-2"
+            role="status"
+            aria-live="polite"
+          >
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+            Loading the map…
+          </span>
+        ) : (
+          emptyLabel
+        )}
       </div>
     );
   }

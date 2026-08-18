@@ -1112,6 +1112,8 @@ export interface VenueMapSectionTables {
 /** One stored map in the staff editor snapshot. */
 export interface VenueMapStaffAsset {
   id: string;
+  /** Content hash — used to bust every cache layer when the artwork changes. */
+  checksum: string;
   /** "image/svg+xml" | "image/png" — units are viewBox units or pixels. */
   mime: string;
   width: number;

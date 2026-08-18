@@ -266,11 +266,10 @@ export function StepTable({
           focusBounds={focusBounds}
           selectedId={selectedTableId}
           onSelect={(id) => onSelect(tables.find((t) => t.id === id) ?? null)}
+          loading={!!venueMap && !mapUrl && !mapFailed}
           emptyLabel={
-            venueMap
-              ? mapFailed
-                ? "The venue map image couldn’t be loaded — pick from the list below."
-                : "Loading the venue map…"
+            mapFailed
+              ? "The venue map image couldn’t be loaded — pick from the list below."
               : "This venue has no map yet — pick from the list below."
           }
         />
