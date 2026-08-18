@@ -115,14 +115,18 @@ export function VenueMapEditor() {
     if (settleTimer.current) clearTimeout(settleTimer.current);
   }, []);
 
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+
   const upload = useMutation({
-    mutationFn: (file: File) => venueMapApi.uploadMap(file),
+    mutationFn: (file: File) => venueMapApi.uploadMap(file, setUploadProgress),
+    onMutate: () => setUploadProgress(0),
     onSuccess: () => {
       toast.success("Map uploaded");
       invalidate();
     },
     onError: (e) =>
       toast.error("Could not upload map", e instanceof ApiError ? e.message : undefined),
+    onSettled: () => setUploadProgress(null),
   });
 
   const savePosition = useMutation({
@@ -176,8 +180,12 @@ export function VenueMapEditor() {
   // public route is no good here either — it requires the venue to be
   // published, and a venue is normally still unpublished while building its map.
   const venueMap = config.data?.map ?? null;
+  // ?v=<checksum> is what makes a re-upload actually show. Replacing the map
+  // REUSES the asset row, so the id alone is a stable URL for changed bytes —
+  // and the blob cache, the browser cache and the CDN would all keep serving
+  // the previous artwork. Keying the URL to the content invalidates all three.
   const { url: mapUrl, failed: mapFailed } = useMapAssetUrl(
-    venueMap ? `venue-map/assets/${venueMap.id}` : null,
+    venueMap ? `venue-map/assets/${venueMap.id}?v=${venueMap.checksum}` : null,
   );
 
   // Saving an outline re-derives its bounding box server-side, so the editor
@@ -339,6 +347,29 @@ export function VenueMapEditor() {
         )}
       </div>
 
+      {uploadProgress !== null && (
+        <div
+          role="progressbar"
+          aria-label="Uploading venue map"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={Math.round(uploadProgress * 100)}
+          className="space-y-1"
+        >
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full rounded-full bg-foreground transition-[width] duration-150 ease-out"
+              style={{ width: `${Math.max(2, uploadProgress * 100)}%` }}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {uploadProgress < 1
+              ? `Uploading… ${Math.round(uploadProgress * 100)}%`
+              : "Processing the image…"}
+          </p>
+        </div>
+      )}
+
       {/* The switch lives here, not in Manage sections: this is where you are
           standing when the guest flow comes up empty, and `is_bookable_online`
           defaults to false so every new section starts invisible to guests. */}
@@ -397,6 +428,9 @@ export function VenueMapEditor() {
 
       <VenueMapCanvas
         asset={mapAsset}
+        // Distinguishes "fetching the artwork" from "no artwork" — otherwise
+        // replacing a map shows the empty-state copy mid-swap.
+        loading={!!venueMap && !mapUrl && !mapFailed}
         hotspots={hotspots}
         areas={areas}
         editableAreaId={active?.id ?? null}

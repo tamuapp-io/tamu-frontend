@@ -1,4 +1,4 @@
-import { api } from "@/lib/api/client";
+import { api, uploadWithProgress } from "@/lib/api/client";
 import type { Bounds, Point } from "@/lib/geometry";
 import type {
   ItemEnvelope,
@@ -32,11 +32,15 @@ export const publicVenueMapApi = {
 export const venueMapApi = {
   config: () => api.get<ItemEnvelope<VenueMapStaffConfig>>("venue-map"),
 
-  /** Upload or replace THE venue map (SVG, or PNG at least 1280x960). */
-  uploadMap: (file: File) => {
+  /** Upload or replace THE venue map (SVG, or a photo at least 1280x960). */
+  uploadMap: (file: File, onProgress?: (fraction: number) => void) => {
     const form = new FormData();
     form.append("file", file);
-    return api.upload<ItemEnvelope<Record<string, unknown>>>("venue-map/svg", form);
+    return uploadWithProgress<ItemEnvelope<Record<string, unknown>>>(
+      "venue-map/svg",
+      form,
+      onProgress,
+    );
   },
 
   removeMap: () => api.delete<null>("venue-map/svg"),

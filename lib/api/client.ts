@@ -138,6 +138,76 @@ function safeJson(text: string): unknown {
  *
  * Caller owns the URL: revoke it when the component unmounts.
  */
+/**
+ * Upload with real byte-level progress.
+ *
+ * fetch() cannot report request progress at all, so a 10 MB venue map would sit
+ * behind a spinner with no sense of whether anything is happening. XHR still
+ * can, which is the only reason this exists alongside api.upload(). Auth, the
+ * ngrok header, and the ApiError shape all mirror request() so callers cannot
+ * tell the two apart except by the callback.
+ */
+export function uploadWithProgress<T>(
+  path: string,
+  form: FormData,
+  onProgress?: (fraction: number) => void,
+): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", buildUrl(path).toString());
+    xhr.setRequestHeader("Accept", "application/json");
+
+    try {
+      const host = new URL(API_URL.replace(/\/+$/, "")).hostname;
+      if (host.endsWith(".ngrok-free.app") || host.endsWith(".ngrok.io")) {
+        xhr.setRequestHeader("ngrok-skip-browser-warning", "true");
+      }
+    } catch {
+      /* invalid NEXT_PUBLIC_API_URL — skip */
+    }
+
+    const token = getAuthToken();
+    if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+
+    // Never set Content-Type for FormData — the browser adds the multipart boundary.
+
+    if (onProgress) {
+      xhr.upload.addEventListener("progress", (e) => {
+        // Not every transport reports a total; fall back to indeterminate
+        // rather than inventing a percentage.
+        if (e.lengthComputable && e.total > 0) onProgress(e.loaded / e.total);
+      });
+      // The bytes are gone; what remains is the server thinking. Park at 100%
+      // so the bar never sits at 99% through a slow sanitize.
+      xhr.upload.addEventListener("load", () => onProgress(1));
+    }
+
+    xhr.addEventListener("load", () => {
+      const json = xhr.responseText ? safeJson(xhr.responseText) : null;
+
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve(json as T);
+        return;
+      }
+
+      const body: ApiErrorBody =
+        json && typeof json === "object"
+          ? (json as ApiErrorBody)
+          : { message: xhr.statusText || "Upload failed" };
+      reject(new ApiError(body, xhr.status));
+    });
+
+    xhr.addEventListener("error", () =>
+      reject(new ApiError({ message: "Network error during upload" }, 0)),
+    );
+    xhr.addEventListener("abort", () =>
+      reject(new ApiError({ message: "Upload cancelled" }, 0)),
+    );
+
+    xhr.send(form);
+  });
+}
+
 export async function fetchObjectUrl(pathOrUrl: string): Promise<string> {
   const headers = new Headers({ Accept: "image/svg+xml,*/*" });
 
