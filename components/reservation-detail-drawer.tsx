@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Cake, Check, MoveRight, UserMinus, UserCheck, X } from "lucide-react";
+import { AlertTriangle, Cake, Check, Clock, MoveRight, UserMinus, UserCheck, X } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -256,6 +256,9 @@ export function ReservationDetailDrawer({
                 <div className="label-cap mb-2">Payment</div>
                 {r.deposit_cents && r.payment ? (
                   <div className="flex items-center gap-3 rounded-lg border border-border p-3 text-sm">
+                    {/* SVG icons, not text glyphs — glyphs render inconsistently
+                        across fonts and are announced as punctuation by screen
+                        readers. The label beside this conveys the state in words. */}
                     <div
                       className={
                         r.payment.status === "paid"
@@ -264,8 +267,15 @@ export function ReservationDetailDrawer({
                             ? "grid h-9 w-9 place-items-center rounded bg-amber-50 text-amber-700"
                             : "grid h-9 w-9 place-items-center rounded bg-rose-50 text-rose-700"
                       }
+                      aria-hidden
                     >
-                      {r.payment.status === "paid" ? "✓" : r.payment.status === "pending" ? "…" : "!"}
+                      {r.payment.status === "paid" ? (
+                        <Check className="h-4 w-4" />
+                      ) : r.payment.status === "pending" ? (
+                        <Clock className="h-4 w-4" />
+                      ) : (
+                        <AlertTriangle className="h-4 w-4" />
+                      )}
                     </div>
                     <div className="flex-1">
                       <div className="font-medium">

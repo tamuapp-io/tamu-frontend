@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { KpiStat } from "@/components/kpi-stat";
 import { SectionedFloorPlan } from "@/components/sectioned-floor-plan";
+import { VenueMapEditor } from "@/components/venue-map-editor";
+import { useHasFeature } from "@/lib/hooks/use-features";
 import { TableEditSheet } from "@/components/table-edit-sheet";
 import { ManageSectionsDialog } from "@/components/manage-sections-dialog";
 import {
@@ -43,6 +45,8 @@ const SHAPE_GLYPH: Record<string, { icon: string; rounded: string }> = {
 export default function TablesPage() {
   const { data: tables = [], isPending } = useTablesList({ per_page: 200 });
   const { data: floorSections = [] } = useFloorSections();
+  // Advisory only — the API enforces the gate.
+  const hasVenueMap = useHasFeature("venue_map");
   const deleteTable = useDeleteTable();
 
   const [editingTable, setEditingTable] = useState<Table | null>(null);
@@ -204,6 +208,7 @@ export default function TablesPage() {
           <TabsList>
             <TabsTrigger value="list">Tables</TabsTrigger>
             <TabsTrigger value="floor">Floor plan</TabsTrigger>
+            {hasVenueMap && <TabsTrigger value="map">Venue map</TabsTrigger>}
             <TabsTrigger value="hours" disabled>
               Hours <span className="ml-2 rounded bg-muted px-1 py-0.5 text-[10px]">P2</span>
             </TabsTrigger>
@@ -363,6 +368,12 @@ export default function TablesPage() {
               )}
             </section>
           </TabsContent>
+
+          {hasVenueMap && (
+            <TabsContent value="map" className="mt-4">
+              <VenueMapEditor />
+            </TabsContent>
+          )}
 
           <TabsContent value="floor" className="mt-4">
             {/* One floor plan per section — adding a section adds a floor plan. */}

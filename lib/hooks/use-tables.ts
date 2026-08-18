@@ -78,8 +78,21 @@ export function useFloorSectionMutations() {
     mutationFn: (ids: string[]) => floorSectionsApi.reorder(ids),
     onSuccess: invalidate,
   });
+  // Online-bookability and section pricing. Also busts ["venue-map"], since the
+  // staff editor reads these same fields from its own snapshot endpoint.
+  const update = useMutation({
+    mutationFn: ({
+      id,
+      ...payload
+    }: { id: string } & Parameters<typeof floorSectionsApi.update>[1]) =>
+      floorSectionsApi.update(id, payload),
+    onSuccess: () => {
+      invalidate();
+      void qc.invalidateQueries({ queryKey: ["venue-map"] });
+    },
+  });
 
-  return { create, rename, remove, reorder };
+  return { create, rename, remove, reorder, update };
 }
 
 type TablePositionsPayload = Array<{

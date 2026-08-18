@@ -40,8 +40,18 @@ export const floorSectionsApi = {
   list: () => api.get<ListEnvelope<FloorSection>>("tables/sections"),
   create: (name: string) =>
     api.post<ItemEnvelope<FloorSection>>("tables/sections", { name }),
-  update: (id: string, payload: { name?: string; is_active?: boolean }) =>
-    api.patch<ItemEnvelope<FloorSection>>(`tables/sections/${id}`, payload),
+  update: (
+    id: string,
+    payload: {
+      name?: string;
+      is_active?: boolean;
+      /** Guests may pick tables here (venue_map feature). Defaults false. */
+      is_bookable_online?: boolean;
+      /** TRUE cents (IDR × 100) — NOT services.price_cents' whole-rupiah convention. */
+      default_price_cents?: number | null;
+      description?: string | null;
+    },
+  ) => api.patch<ItemEnvelope<FloorSection>>(`tables/sections/${id}`, payload),
   remove: (id: string) => api.delete<void>(`tables/sections/${id}`),
   reorder: (ids: string[]) =>
     api.post<ListEnvelope<FloorSection>>("tables/sections/reorder", { ids }),

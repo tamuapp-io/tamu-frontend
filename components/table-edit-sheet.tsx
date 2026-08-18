@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useHasFeature } from "@/lib/hooks/use-features";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -81,6 +82,7 @@ function TableEditForm({
 }) {
   const create = useCreateTable();
   const update = useUpdateTable();
+  const hasVenueMap = useHasFeature("venue_map");
   const [form, setForm] = useState<CreateTablePayload>(() =>
     table
       ? {
@@ -92,6 +94,7 @@ function TableEditForm({
           status: table.status,
           online_bookable: table.online_bookable,
           priority: table.priority,
+          price_cents: table.price_cents ?? null,
         }
       : initialForm,
   );
@@ -289,6 +292,26 @@ function TableEditForm({
               Lower number = filled first.
             </p>
           </div>
+
+          {hasVenueMap && (
+            <div className="space-y-1.5">
+              <Label htmlFor="t-price">Price (Rp)</Label>
+              <Input
+                id="t-price"
+                inputMode="numeric"
+                placeholder="Leave blank to use the section default"
+                // Stored as TRUE cents; staff type whole rupiah.
+                value={form.price_cents != null ? String(form.price_cents / 100) : ""}
+                onChange={(e) => {
+                  const digits = e.target.value.replace(/[^\d]/g, "");
+                  set("price_cents", digits === "" ? null : Number(digits) * 100);
+                }}
+              />
+              <p className="text-xs text-muted-foreground">
+                What a guest pays to reserve this spot from the venue map. Charged up front.
+              </p>
+            </div>
+          )}
 
           <div className="space-y-1.5">
             <Label>Status</Label>
