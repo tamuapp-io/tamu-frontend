@@ -19,15 +19,17 @@ import { cn } from "@/lib/utils";
 import { formatGuestAssignedTables, ordinal } from "@/lib/format";
 import { PhoneInput } from "@/components/phone-input";
 import { StepSection, StepTable } from "@/components/venue-map-booking-steps";
+import { StepMenu } from "@/components/menu-booking-step";
 import type {
   PublicAvailabilitySlot,
   PublicReservation,
   PublicTenant,
   SpaService,
   Therapist,
+  MenuOrderLine,
 } from "@/lib/types";
 
-type Step = "service" | "date" | "slot" | "section" | "table" | "details" | "done";
+type Step = "service" | "date" | "slot" | "section" | "table" | "menu" | "details" | "done";
 
 interface BookingState {
   service_id: string | null;
@@ -38,6 +40,8 @@ interface BookingState {
   section_id: string | null;
   section_name: string | null;
   table_id: string | null;
+  /** Pre-ordered menu lines. Ids and quantities only — never prices. */
+  menu_lines: MenuOrderLine[];
   guest: {
     name: string;
     email: string;
@@ -124,6 +128,9 @@ function PublicBookingFlow({
   // Map booking is restaurant-only and opt-in per venue. Everything below
   // falls back to the classic 4-step flow when it's off.
   const venueHasMap = !venueIsSpa && venue.venue_map?.enabled === true;
+  // Driven by the venue's menu mode, so a venue with no menu — or one switched
+  // off — never gets a Menu step, empty or otherwise.
+  const venueHasMenu = !venueIsSpa && venue.menu?.visible === true;
 
   const [step, setStep] = useState<Step>(venueIsSpa ? "service" : "date");
   const [confirmation, setConfirmation] = useState<PublicReservation | null>(null);
@@ -136,6 +143,7 @@ function PublicBookingFlow({
     section_id: null,
     section_name: null,
     table_id: null,
+    menu_lines: [],
     guest: { name: "", email: "", phone: "", marketing_opt_in: false, birthday_month: null, birthday_day: null },
     occasion: "",
     special_requests: "",
@@ -144,7 +152,13 @@ function PublicBookingFlow({
 
   return (
     <BookingShell tenant={venue} isSpa={venueIsSpa}>
-      <Stepper step={step} isSpa={venueIsSpa} hasMap={venueHasMap} terminology={venue.terminology} />
+      <Stepper
+        step={step}
+        isSpa={venueIsSpa}
+        hasMap={venueHasMap}
+        hasMenu={venueHasMenu}
+        terminology={venue.terminology}
+      />
       {step === "service" && venueIsSpa && (
         <StepService
           slug={slug}
@@ -170,7 +184,7 @@ function PublicBookingFlow({
           state={state}
           setState={setState}
           onBack={() => setStep("date")}
-          onNext={() => setStep(venueHasMap ? "section" : "details")}
+          onNext={() => setStep(venueHasMap ? "section" : venueHasMenu ? "menu" : "details")}
         />
       )}
       {step === "section" && venueHasMap && (
@@ -203,16 +217,29 @@ function PublicBookingFlow({
             setState((s) => ({ ...s, table_id: null }));
             setStep("section");
           }}
+          onNext={() => setStep(venueHasMenu ? "menu" : "details")}
+        />
+      )}
+
+      {step === "menu" && venueHasMenu && (
+        <StepMenu
+          slug={slug}
+          lines={state.menu_lines}
+          onChange={(menu_lines) => setState((s) => ({ ...s, menu_lines }))}
+          onBack={() => setStep(venueHasMap ? "table" : "slot")}
           onNext={() => setStep("details")}
         />
       )}
+
       {step === "details" && (
         <StepDetails
           slug={slug}
           tenant={venue}
           state={state}
           setState={setState}
-          onBack={() => setStep(venueHasMap ? "table" : "slot")}
+          onBack={() =>
+            setStep(venueHasMenu ? "menu" : venueHasMap ? "table" : "slot")
+          }
           onSuccess={(r) => {
             setConfirmation(r);
             setStep("done");
@@ -310,6 +337,16 @@ const RESTAURANT_MAP_STEPS: { id: Step; label: string }[] = [
   { id: "done", label: "Done" },
 ];
 
+/**
+ * The Menu step only exists when the venue's menu mode says so — a venue with
+ * no menu, or one switched off, must not get an empty step in its stepper.
+ */
+function withMenuStep(steps: { id: Step; label: string }[], hasMenu: boolean) {
+  if (!hasMenu) return steps;
+  const at = steps.findIndex((s) => s.id === "details");
+  return [...steps.slice(0, at), { id: "menu" as Step, label: "Menu" }, ...steps.slice(at)];
+}
+
 const SPA_STEPS: { id: Step; label: string }[] = [
   { id: "service", label: "Treatment" },
   { id: "date", label: "Date" },
@@ -322,14 +359,18 @@ function Stepper({
   step,
   isSpa,
   hasMap,
+  hasMenu,
   terminology,
 }: {
   step: Step;
   isSpa?: boolean;
   hasMap?: boolean;
+  hasMenu?: boolean;
   terminology?: PublicTenant["terminology"];
 }) {
-  const steps = isSpa ? SPA_STEPS : hasMap ? RESTAURANT_MAP_STEPS : RESTAURANT_STEPS;
+  const steps = isSpa
+    ? SPA_STEPS
+    : withMenuStep(hasMap ? RESTAURANT_MAP_STEPS : RESTAURANT_STEPS, !!hasMenu);
   const idx = steps.findIndex((s) => s.id === step);
   const partyLabel = terminology?.party ?? "Party size";
 
@@ -923,6 +964,9 @@ function StepDetails({
           : { party_size: state.party_size }),
         // Ignored server-side unless the venue has the venue_map feature.
         table_id: state.table_id ?? undefined,
+        // Ids and quantities only — the server prices the order from its own
+        // catalogue, so a price sent from here would be ignored anyway.
+        menu_items: state.menu_lines.length > 0 ? state.menu_lines : undefined,
         guest: {
           name: state.guest.name,
           email: state.guest.email,

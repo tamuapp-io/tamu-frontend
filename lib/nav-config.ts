@@ -20,6 +20,7 @@ import {
   Ticket,
   TicketCheck,
   Users,
+  UtensilsCrossed,
 } from "lucide-react";
 
 export type AppNavItem = {
@@ -78,6 +79,7 @@ export const APP_SECTIONS: AppSection[] = [
       "/walkins",
       "/waitlist",
       "/tables",
+      "/menu",
       "/services",
       "/therapists",
       "/rooms",
@@ -99,6 +101,7 @@ export const APP_SECTIONS: AppSection[] = [
         label: "Manage",
         items: [
           { href: "/tables", label: "Tables & Floor", icon: Grid2x2, categories: ["restaurant", "cafe"], keywords: ["floor plan", "layout"] },
+          { href: "/menu", label: "Menu", icon: UtensilsCrossed, categories: ["restaurant", "cafe"], keywords: ["food", "drinks", "dishes", "catalog"] },
           { href: "/services", label: "Services", icon: Sparkles, categories: ["spa", "wellness"], keywords: ["treatments", "packages", "catalog"] },
           { href: "/therapists", label: "Therapists", icon: Hand, categories: ["spa", "wellness"], keywords: ["practitioners", "staff"] },
           { href: "/rooms", label: "Rooms", icon: DoorOpen, categories: ["spa", "wellness"], keywords: ["treatment rooms"] },
