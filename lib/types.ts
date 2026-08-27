@@ -346,6 +346,8 @@ export interface PublicTenant {
   waitlist: PublicTenantWaitlistProfile;
   /** Derived capability — true when guests may pick their table from a map. */
   venue_map?: { enabled: boolean };
+  /** Whether the booking page should include a Menu step, and if it can order. */
+  menu?: { visible: boolean; ordering_enabled: boolean };
   custom_booking_fields: CustomBookingField[];
   description?: string | null;
   address?: string | null;
@@ -419,6 +421,12 @@ export interface PublicCreateReservationPayload {
   reserved_at: string;
   /** Guest-chosen table — honoured only for venues with the venue_map feature. */
   table_id?: string;
+  /**
+   * Pre-ordered menu lines — honoured only for venues with the menu_ordering
+   * feature AND a connected gateway. Ids and quantities only: the server prices
+   * the order from its own catalogue and ignores anything else sent here.
+   */
+  menu_items?: MenuOrderLine[];
   party_size?: number;
   duration_mins?: number;
   service_id?: string;
@@ -1134,4 +1142,77 @@ export interface VenueMapStaffConfig {
     polygon: Point[] | null;
     bounds: Bounds | null;
   }>;
+}
+
+/* ── Menu ─────────────────────────────────────────────────────────────── */
+
+export interface MenuLabel {
+  id: string;
+  name: string;
+  /** A palette key from components/menu-label-colors.ts, never a hex. */
+  color: string;
+  sort_order?: number;
+}
+
+export interface MenuItem {
+  id: string;
+  menu_category_id?: string;
+  menu_label_id: string | null;
+  name: string;
+  description?: string | null;
+  /** TRUE cents (IDR × 100) — use formatMoney, not formatServicePrice. */
+  price_cents: number;
+  image_url?: string | null;
+  is_active?: boolean;
+  /** Staff flag: may guests pre-order this dish at all? */
+  is_orderable?: boolean;
+  /** Guest payload: can this dish be added right now (flag AND gateway AND mode). */
+  orderable?: boolean;
+  sort_order?: number;
+}
+
+export interface MenuCategory {
+  id: string;
+  name: string;
+  description?: string | null;
+  is_active?: boolean;
+  sort_order?: number;
+  items: MenuItem[];
+}
+
+/** Staff editor snapshot: the whole menu in one payload. */
+export interface MenuConfig {
+  /** off | display | order | both */
+  mode: MenuMode;
+  /** What the mode resolves to right now — `order` can be silently hiding it. */
+  visible: boolean;
+  ordering_enabled: boolean;
+  /** Reported separately so the editor can name the ONE missing prerequisite. */
+  addon_granted: boolean;
+  gateway_connected: boolean;
+  categories: MenuCategory[];
+  labels: MenuLabel[];
+}
+
+export type MenuMode = "off" | "display" | "order" | "both";
+
+/**
+ * The guest-facing menu. Published by every venue; `ordering_enabled` is what
+ * decides between an orderable step and a read-only one, and needs BOTH the
+ * add-on and a live payment gateway.
+ */
+export interface PublicMenu {
+  /** off | display | order | both */
+  mode: string;
+  /** Whether the menu step should render at all. */
+  visible: boolean;
+  ordering_enabled: boolean;
+  categories: MenuCategory[];
+  labels: MenuLabel[];
+}
+
+/** One line a guest is about to order. Prices are never sent — only ids. */
+export interface MenuOrderLine {
+  id: string;
+  quantity: number;
 }
