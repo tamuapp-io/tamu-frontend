@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { TamuLogo } from "@/components/tamu-brand";
+import { VenueMark } from "@/components/venue-mark";
 import { safeBrandColor } from "@/lib/brand";
 import { cn } from "@/lib/utils";
 import type { PublicReservationVenue } from "@/lib/types";
@@ -31,7 +31,15 @@ export function PublicVenueShell({
       style={brand ? ({ "--venue-brand": brand } as React.CSSProperties) : undefined}
     >
       <header className="mb-6 flex flex-col items-center gap-3 text-center">
-        <VenueMark venue={venue} />
+        <VenueMark
+          name={venue?.name}
+          logoUrl={venue?.logo_url}
+          fallback={
+            venue?.name ? (
+              <h1 className="text-2xl font-semibold tracking-tight">{venue.name}</h1>
+            ) : null
+          }
+        />
         {brand && (
           <span
             aria-hidden
@@ -49,35 +57,4 @@ export function PublicVenueShell({
       </footer>
     </div>
   );
-}
-
-/**
- * A venue's logo_url is an arbitrary URL its owner pasted into settings, so the
- * hostname can't be enumerated in next.config's images.remotePatterns —
- * next/image would throw "hostname is not configured" at runtime. A plain <img>
- * is the correct tool for a URL we cannot know in advance.
- */
-function VenueMark({ venue }: { venue?: PublicReservationVenue | null }) {
-  const [broken, setBroken] = useState(false);
-  const name = venue?.name;
-  const logo = venue?.logo_url;
-
-  if (logo && !broken) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={logo}
-        alt={name ?? "Venue"}
-        referrerPolicy="no-referrer"
-        onError={() => setBroken(true)}
-        className="max-h-14 w-auto max-w-[220px] object-contain"
-      />
-    );
-  }
-
-  // Also the path when the logo 404s: a broken image must never leave the
-  // header empty on the page where someone is about to pay.
-  return name ? (
-    <h1 className="text-2xl font-semibold tracking-tight">{name}</h1>
-  ) : null;
 }
