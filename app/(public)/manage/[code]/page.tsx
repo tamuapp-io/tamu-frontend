@@ -19,6 +19,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { StatusPill } from "@/components/status-pill";
+import { PublicVenueShell } from "@/components/public-venue-shell";
 import { publicBookingApi } from "@/lib/api/public-booking";
 import { ApiError } from "@/lib/api/client";
 import { toast } from "@/components/ui/toaster";
@@ -71,15 +72,15 @@ export default function ManageBookingPage({
 
   if (reservationQuery.isLoading) {
     return (
-      <div className="mx-auto max-w-lg p-8">
+      <PublicVenueShell>
         <Skeleton className="h-64 w-full" />
-      </div>
+      </PublicVenueShell>
     );
   }
 
   if (reservationQuery.isError) {
     return (
-      <div className="mx-auto max-w-lg p-8">
+      <PublicVenueShell>
         <Card className="p-8 text-center">
           <AlertTriangle className="mx-auto h-8 w-8 text-amber-600" />
           <h1 className="mt-3 text-lg font-semibold">
@@ -89,7 +90,7 @@ export default function ManageBookingPage({
             The confirmation code may have a typo or the booking has been removed.
           </p>
         </Card>
-      </div>
+      </PublicVenueShell>
     );
   }
 
@@ -113,7 +114,7 @@ export default function ManageBookingPage({
   }
 
   return (
-    <div className="mx-auto max-w-xl p-4 pt-10 sm:p-8">
+    <PublicVenueShell venue={r.venue}>
       <Card className="p-8">
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -196,33 +197,34 @@ export default function ManageBookingPage({
           </p>
         )}
 
-        {r.payment && r.deposit_cents ? (
+        {r.payment && (r.deposit_cents || r.menu_total_cents) ? (
           r.payment.status === "paid" ? (
             <p className="mt-6 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
-              <Check className="mr-1 inline h-4 w-4" /> Deposit of{" "}
-              {formatMoney(r.deposit_cents, r.payment.currency)} paid — your booking is confirmed.
+              <Check className="mr-1 inline h-4 w-4" />{" "}
+              {formatMoney(r.payment.amount_cents, r.payment.currency)} paid — your booking
+              is confirmed.
             </p>
           ) : r.payment.status === "pending" ? (
             <div className="mt-6 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
               <p className="font-medium">
-                Deposit of {formatMoney(r.deposit_cents, r.payment.currency)} required
+                {formatMoney(r.payment.amount_cents, r.payment.currency)} due
               </p>
               <p className="mt-1 text-amber-800">
                 Your slot is held until the deposit is paid. If you haven&apos;t finished
                 checkout, you can complete it now.
               </p>
               {r.payment.invoice_url && (
-                <a
-                  href={r.payment.invoice_url}
-                  className="mt-3 inline-flex h-9 items-center justify-center rounded-md bg-foreground px-4 text-sm font-medium text-primary-foreground"
+                <Link
+                  href={`/pay/${encodeURIComponent(r.confirmation_code)}`}
+                  className="mt-3 inline-flex h-11 items-center justify-center rounded-md bg-foreground px-4 text-sm font-medium text-primary-foreground"
                 >
-                  Complete deposit payment
-                </a>
+                  Complete payment
+                </Link>
               )}
             </div>
           ) : (
             <p className="mt-6 rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-900">
-              The deposit payment expired, so this booking was released.
+              The payment expired, so this booking was released.
             </p>
           )
         ) : null}
@@ -275,6 +277,6 @@ export default function ManageBookingPage({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </PublicVenueShell>
   );
 }
