@@ -252,9 +252,39 @@ export function ReservationDetailDrawer({
                 )}
               </section>
 
+              {r.menu_order_items && r.menu_order_items.length > 0 && (
+                <section>
+                  <div className="label-cap mb-2">Pre-ordered</div>
+                  <ul className="divide-y divide-border rounded-lg border border-border text-sm">
+                    {r.menu_order_items.map((line) => (
+                      <li key={line.id} className="flex items-center gap-3 px-3 py-2">
+                        <span className="w-6 shrink-0 text-muted-foreground tabular-nums">
+                          {line.quantity}×
+                        </span>
+                        {/* The name is a snapshot, so it still reads correctly
+                            after the dish is repriced or taken off the menu. */}
+                        <span className="min-w-0 flex-1 truncate">{line.name}</span>
+                        <span className="shrink-0 tabular-nums">
+                          {formatMoney(line.line_total_cents, "IDR")}
+                        </span>
+                      </li>
+                    ))}
+                    <li className="flex items-center justify-between px-3 py-2 font-medium">
+                      <span>Total</span>
+                      <span className="tabular-nums">
+                        {formatMoney(r.menu_total_cents ?? 0, "IDR")}
+                      </span>
+                    </li>
+                  </ul>
+                </section>
+              )}
+
               <section>
                 <div className="label-cap mb-2">Payment</div>
-                {r.deposit_cents && r.payment ? (
+                {/* menu_total_cents matters here too: a booking can be paid for
+                    food alone, with no deposit — gating on deposit_cents would
+                    hide the payment entirely for those. */}
+                {r.payment && (r.deposit_cents || r.menu_total_cents) ? (
                   <div className="flex items-center gap-3 rounded-lg border border-border p-3 text-sm">
                     {/* SVG icons, not text glyphs — glyphs render inconsistently
                         across fonts and are announced as punctuation by screen
@@ -279,7 +309,15 @@ export function ReservationDetailDrawer({
                     </div>
                     <div className="flex-1">
                       <div className="font-medium">
-                        Deposit {formatMoney(r.deposit_cents, r.payment.currency)}
+                        {r.deposit_cents && r.menu_total_cents
+                          ? "Deposit + pre-order"
+                          : r.menu_total_cents
+                            ? "Pre-order"
+                            : "Deposit"}{" "}
+                        {formatMoney(
+                          (r.deposit_cents ?? 0) + (r.menu_total_cents ?? 0),
+                          r.payment.currency,
+                        )}
                       </div>
                       <div className="text-xs text-muted-foreground">
                         {r.payment.status === "paid"

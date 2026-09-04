@@ -217,6 +217,9 @@ export interface Reservation {
   guest?: Guest;
   /** Deposit due (true cents) + the hosted-invoice payment, when required. */
   deposit_cents?: number | null;
+  /** TRUE cents (IDR × 100) — pre-ordered menu items, billed with the deposit. */
+  menu_total_cents?: number | null;
+  menu_order_items?: ReservationMenuLine[];
   payment?: ReservationPayment | null;
   cancelled_at?: string | null;
   cancel_reason?: string | null;
@@ -1215,4 +1218,13 @@ export interface PublicMenu {
 export interface MenuOrderLine {
   id: string;
   quantity: number;
+}
+
+/** One pre-ordered line on a reservation. Values are snapshots from booking time. */
+export interface ReservationMenuLine {
+  id: string;
+  name: string;
+  quantity: number;
+  unit_price_cents: number;
+  line_total_cents: number;
 }
