@@ -16,7 +16,7 @@ import { useState } from "react";
 export function VenueMark({
   name,
   logoUrl,
-  logoClassName = "max-h-14 w-auto max-w-[220px] object-contain",
+  logoClassName = "max-h-24 w-auto max-w-[280px] object-contain",
   fallback,
 }: {
   name?: string | null;

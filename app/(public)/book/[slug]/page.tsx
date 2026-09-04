@@ -289,7 +289,7 @@ function BookingShell({
             <VenueMark
               name={tenant.name}
               logoUrl={tenant.logo_url}
-              logoClassName="max-h-16 w-auto max-w-[260px] object-contain object-left"
+              logoClassName="max-h-28 w-auto max-w-[320px] object-contain object-left sm:max-h-32"
               fallback={
                 <h1 className="text-3xl font-semibold tracking-tight">
                   {tenant.name}
