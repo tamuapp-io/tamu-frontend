@@ -389,6 +389,8 @@ export interface ReservationPayment {
   currency: string;
   invoice_url?: string | null;
   paid_at?: string | null;
+  /** Xendit's invoice expiry — drives the countdown on /pay/[code]. */
+  expires_at?: string | null;
 }
 
 export interface PublicReservation {
@@ -416,8 +418,20 @@ export interface PublicReservation {
   /** Deposit due (true cents) + the hosted-invoice payment, when required. */
   deposit_cents?: number | null;
   payment?: ReservationPayment | null;
+  /** Pre-ordered menu, snapshotted at booking time. */
+  menu_total_cents?: number | null;
+  menu_order_items?: ReservationMenuLine[];
+  /** Venue identity for the guest-facing payment page. */
+  venue?: PublicReservationVenue | null;
   /** Venue IANA timezone for displaying reserved_at */
   restaurant_timezone?: string;
+}
+
+export interface PublicReservationVenue {
+  name: string;
+  logo_url?: string | null;
+  /** Already validated server-side as a hex colour, or null. Guard again anyway. */
+  brand_color?: string | null;
 }
 
 export interface PublicCreateReservationPayload {

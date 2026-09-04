@@ -5,6 +5,7 @@ import { use } from "react";
 import { Calendar, Check, ChevronLeft, ClipboardList, Clock, Minus, Plus, Users } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { TamuLogo } from "@/components/tamu-brand";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -947,6 +948,7 @@ function StepDetails({
   onSuccess: (r: PublicReservation) => void;
 }) {
   const isSpa = tenant.booking_strategy === "spa";
+  const router = useRouter();
 
   const create = useMutation({
     mutationFn: () => {
@@ -993,11 +995,12 @@ function StepDetails({
   async function handleSubmit() {
     try {
       const r = await create.mutateAsync();
-      // Deposit required → hand off to the Xendit hosted checkout. Xendit
-      // returns the guest to /manage/{code}, which shows the confirmed booking
-      // once the webhook lands.
+      // Payment required → our own /pay page, not straight out to the gateway.
+      // It itemises what's owed (a deposit and pre-ordered food land on one
+      // invoice, so a bare total reads as an overcharge) and it is also where
+      // Xendit returns the guest, so the whole payment round-trip stays branded.
       if (r.data.payment?.status === "pending" && r.data.payment.invoice_url) {
-        window.location.href = r.data.payment.invoice_url;
+        router.push(`/pay/${encodeURIComponent(r.data.confirmation_code)}`);
         return;
       }
       onSuccess(r.data);
