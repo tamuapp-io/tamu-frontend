@@ -7,6 +7,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { TamuLogo } from "@/components/tamu-brand";
+import { VenueMark } from "@/components/venue-mark";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -282,9 +283,19 @@ function BookingShell({
         ) : null}
         {tenant && (
           <>
-            <h1 className="text-3xl font-semibold tracking-tight">
-              {tenant.name}
-            </h1>
+            {/* The venue's logo when they've uploaded one, their name as text
+                when they haven't. The name still reaches screen readers through
+                the image's alt, so nothing is lost by dropping the heading. */}
+            <VenueMark
+              name={tenant.name}
+              logoUrl={tenant.logo_url}
+              logoClassName="max-h-16 w-auto max-w-[260px] object-contain object-left"
+              fallback={
+                <h1 className="text-3xl font-semibold tracking-tight">
+                  {tenant.name}
+                </h1>
+              }
+            />
             {tenant.description && (
               <p className="mt-2 max-w-prose text-sm text-muted-foreground">
                 {tenant.description}

@@ -42,3 +42,18 @@ export async function syncOperatingHours(payload: {
     payload,
   );
 }
+
+/**
+ * Upload a venue logo through the shared image endpoint. The server validates
+ * mimes and size and stores under a tenant-scoped `branding/` folder; only the
+ * returned URL is persisted, in settings.profile.logo_url.
+ */
+export function uploadBrandingImage(file: File) {
+  const form = new FormData();
+  form.append("file", file);
+  form.append("folder", "branding");
+  return api.upload<{ data: { url: string; path: string; disk: string } }>(
+    "uploads/image",
+    form,
+  );
+}

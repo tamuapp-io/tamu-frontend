@@ -25,6 +25,7 @@ import { StaffBrowserNotificationsSettings } from "@/components/staff-browser-no
 import { StaffNotificationSoundsSettings } from "@/components/staff-notification-sounds-settings";
 import { XenditPaymentCard } from "@/components/xendit-payment-card";
 import { BookingDepositCard } from "@/components/booking-deposit-card";
+import { VenueLogoField } from "@/components/venue-logo-field";
 import { ApiError } from "@/lib/api/client";
 import { fetchSettings, patchSettings, syncOperatingHours } from "@/lib/api/settings";
 import { useUpdatePassword, useUpdateProfile } from "@/lib/hooks/use-auth";
@@ -736,14 +737,11 @@ export default function SettingsPage() {
                     }
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="rs-logo">Logo URL</Label>
-                  <Input
-                    id="rs-logo"
+                <div className="sm:col-span-2">
+                  <VenueLogoField
                     value={draft.logoUrl}
-                    onChange={(e) =>
-                      setDraft((d) => d && { ...d, logoUrl: e.target.value })
-                    }
+                    venueName={draft.name}
+                    onChange={(url) => setDraft((d) => d && { ...d, logoUrl: url })}
                   />
                 </div>
                 <div className="space-y-1.5">
