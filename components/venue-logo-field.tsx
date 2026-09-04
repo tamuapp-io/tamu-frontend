@@ -5,6 +5,7 @@ import { ImagePlus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { VenueMark } from "@/components/venue-mark";
+import { ImageCropperDialog } from "@/components/image-cropper-dialog";
 import { toast } from "@/components/ui/toaster";
 import { uploadBrandingImage } from "@/lib/api/settings";
 import { ApiError } from "@/lib/api/client";
@@ -32,18 +33,26 @@ export function VenueLogoField({
 }) {
   const fileInput = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [cropping, setCropping] = useState<File | null>(null);
 
-  async function pick(file: File) {
+  /** Picked from disk — crop before anything is sent. */
+  function pick(file: File) {
     // Checked here as well as on the server so the owner gets an instant,
     // specific answer instead of a 422 after a needless upload.
     if (file.size > MAX_BYTES) {
       toast.error("That image is too large", "Logos must be 5 MB or smaller.");
       return;
     }
+    setCropping(file);
+  }
 
+  async function upload(blob: Blob) {
+    setCropping(null);
     setUploading(true);
     try {
-      const res = await uploadBrandingImage(file);
+      const res = await uploadBrandingImage(
+        new File([blob], "logo.png", { type: "image/png" }),
+      );
       onChange(res.data.url);
       toast.success("Logo uploaded", "Save to publish it on your booking page.");
     } catch (err) {
@@ -61,13 +70,13 @@ export function VenueLogoField({
       <Label htmlFor="rs-logo-upload">Logo</Label>
 
       <div className="flex flex-wrap items-center gap-4 rounded-lg border border-border bg-muted/20 p-4">
-        <div className="flex h-16 min-w-[120px] items-center justify-center rounded-md border border-dashed border-border bg-background px-3">
+        <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-md border border-dashed border-border bg-background p-1.5">
           <VenueMark
             name={venueName}
             logoUrl={value}
-            logoClassName="max-h-12 w-auto max-w-[180px] object-contain"
+            logoClassName="max-h-full max-w-full object-contain"
             fallback={
-              <span className="text-lg font-semibold tracking-tight">
+              <span className="px-1 text-center text-sm font-semibold leading-tight tracking-tight">
                 {venueName || "Your venue"}
               </span>
             }
@@ -84,7 +93,7 @@ export function VenueLogoField({
               className="hidden"
               onChange={(e) => {
                 const file = e.target.files?.[0];
-                if (file) void pick(file);
+                if (file) pick(file);
                 // Reset so picking the same file twice still fires onChange.
                 e.target.value = "";
               }}
@@ -113,10 +122,17 @@ export function VenueLogoField({
             {value
               ? "Shown on your booking page through to payment."
               : "Without a logo, guests see your venue name as text."}{" "}
-            PNG, JPEG, WebP or GIF, up to 5 MB.
+            You&apos;ll crop it to a square. PNG, JPEG, WebP or GIF, up to 5 MB.
           </p>
         </div>
       </div>
+
+      <ImageCropperDialog
+        file={cropping}
+        open={cropping !== null}
+        onCancel={() => setCropping(null)}
+        onCropped={(blob) => void upload(blob)}
+      />
     </div>
   );
 }
