@@ -27,10 +27,13 @@ interface SpaServiceTimelineProps {
   onReservationClick?: (reservation: Reservation) => void;
 }
 
-const HOUR_COL_WIDTH = 64;
-const ROW_HEIGHT = 40;
-const ROW_GAP = 6;
-const LABEL_WIDTH = 160;
+// See service-timeline.tsx — an hour column narrow enough to truncate the
+// guest's name makes the bar decoration rather than information, and the bars
+// are buttons that need a 44px hit target.
+const HOUR_COL_WIDTH = 132;
+const ROW_HEIGHT = 46;
+const ROW_GAP = 8;
+const LABEL_WIDTH = 184;
 
 export function SpaServiceTimeline({
   reservations,
@@ -141,7 +144,7 @@ export function SpaServiceTimeline({
               return (
                 <div
                   key={h}
-                  className="shrink-0 border-l border-border px-2 py-2 text-[11px] font-medium text-muted-foreground tabular-nums"
+                  className="shrink-0 border-l border-border px-2 py-2.5 text-[12px] font-medium text-muted-foreground tabular-nums"
                   style={{ width: HOUR_COL_WIDTH }}
                 >
                   {String(h).padStart(2, "0")}:00
@@ -158,10 +161,10 @@ export function SpaServiceTimeline({
               {lanes.map((lane) => (
                 <div
                   key={lane.id}
-                  className="flex items-center gap-2 px-4 text-[12px]"
+                  className="flex items-center gap-2 px-4 text-[13px]"
                   style={{ height: ROW_HEIGHT + ROW_GAP }}
                 >
-                  <span className="font-medium text-foreground">
+                  <span className="truncate font-medium text-foreground">
                     {lane.therapist?.name ?? "Unassigned"}
                   </span>
                 </div>
@@ -223,13 +226,13 @@ export function SpaServiceTimeline({
                       tenantTimeZone,
                     )}${r.room?.name ? ` · ${r.room.name}` : ""}`}
                   >
-                    <span className="flex items-center gap-1 text-[11px] font-semibold leading-none tabular-nums">
+                    <span className="flex items-center gap-1.5 text-[12px] font-semibold leading-none tabular-nums">
                       {formatTimeInTz(start, tenantTimeZone)}
                       <span className="truncate rounded bg-black/10 px-1 text-[10px] font-medium">
                         {serviceName}
                       </span>
                     </span>
-                    <span className="truncate text-[11px] leading-none">
+                    <span className="truncate text-[12px] leading-none">
                       {r.guest?.name ?? "Guest"}
                       {r.room?.name ? (
                         <span className="text-[10px] opacity-75"> · {r.room.name}</span>

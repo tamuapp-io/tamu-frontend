@@ -21,10 +21,17 @@ interface ServiceTimelineProps {
   onReservationClick?: (reservation: Reservation) => void;
 }
 
-const HOUR_COL_WIDTH = 64;
-const ROW_HEIGHT = 36;
-const ROW_GAP = 6;
-const LABEL_WIDTH = 140;
+// An hour has to be wide enough that a booking bar can actually say something.
+// At 64px a 60-minute booking had ~80px of usable width after padding, which
+// truncated the guest's name to a couple of characters — the bar was decoration,
+// not information. The grid now overflows its container and scrolls there.
+const HOUR_COL_WIDTH = 132;
+// Also the hit target: these bars are buttons, and 36px was under the 44px
+// minimum.
+const ROW_HEIGHT = 46;
+const ROW_GAP = 8;
+// Fits "Table 12" plus a section badge on one line instead of wrapping.
+const LABEL_WIDTH = 184;
 
 export function ServiceTimeline({
   reservations,
@@ -129,7 +136,7 @@ export function ServiceTimeline({
               return (
                 <div
                   key={h}
-                  className="shrink-0 border-l border-border px-2 py-2 text-[11px] font-medium text-muted-foreground tabular-nums"
+                  className="shrink-0 border-l border-border px-2 py-2.5 text-[12px] font-medium text-muted-foreground tabular-nums"
                   style={{ width: HOUR_COL_WIDTH }}
                 >
                   {String(h).padStart(2, "0")}:00
@@ -146,14 +153,14 @@ export function ServiceTimeline({
               {lanes.map((lane) => (
                 <div
                   key={lane.id}
-                  className="flex items-center gap-2 px-4 text-[12px]"
+                  className="flex items-center gap-2 px-4 text-[13px]"
                   style={{ height: ROW_HEIGHT + ROW_GAP }}
                 >
-                  <span className="font-medium text-foreground">
+                  <span className="shrink-0 whitespace-nowrap font-medium text-foreground">
                     {lane.table?.name ?? "Unassigned"}
                   </span>
                   {lane.table?.section && (
-                    <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">
+                    <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">
                       {lane.table.section}
                     </span>
                   )}
@@ -217,13 +224,13 @@ export function ServiceTimeline({
                       tenantTimeZone,
                     )}`}
                   >
-                    <span className="flex items-center gap-1 text-[11px] font-semibold leading-none tabular-nums">
+                    <span className="flex items-center gap-1.5 text-[12px] font-semibold leading-none tabular-nums">
                       {formatTimeInTz(start, tenantTimeZone)}
-                      <span className="rounded bg-black/10 px-1 text-[10px] font-medium">
+                      <span className="rounded bg-black/10 px-1 text-[11px] font-medium">
                         {r.party_size}
                       </span>
                     </span>
-                    <span className="truncate text-[11px] leading-none">
+                    <span className="truncate text-[12px] leading-none">
                       {r.guest?.name ??
                         (r.source === "walkin"
                           ? "Walk-in"
