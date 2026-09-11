@@ -39,9 +39,11 @@ export function BookingDepositCard() {
     queryFn: async () => fetchSettings().then((r) => r.data),
   });
 
+  // Asks whether ANY gateway is live, not Xendit specifically — a venue on
+  // DOKU can take deposits just as well.
   const gateway = useQuery({
-    queryKey: ["xendit-connection"],
-    queryFn: () => paymentsApi.xenditSnapshot().then((r) => r.data),
+    queryKey: ["payment-gateways"],
+    queryFn: () => paymentsApi.gateways().then((r) => r.data),
   });
 
   useEffect(() => {
@@ -95,7 +97,7 @@ export function BookingDepositCard() {
 
   const rupiah = Math.max(0, Math.round(Number(draft.amount || 0)));
   const amountInvalid = draft.enabled && rupiah <= 0;
-  const gatewayConnected = gateway.data?.configured ?? false;
+  const gatewayConnected = gateway.data?.active_provider != null;
 
   return (
     <Card className="overflow-hidden shadow-xs">
@@ -113,8 +115,8 @@ export function BookingDepositCard() {
       <div className="space-y-5 p-6">
         {!gatewayConnected && (
           <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-100">
-            Connect Xendit above first — deposits are skipped entirely while no payment
-            gateway is connected, and bookings confirm as normal.
+            Connect a payment gateway above first — deposits are skipped entirely while
+            no gateway is connected, and bookings confirm as normal.
           </p>
         )}
 

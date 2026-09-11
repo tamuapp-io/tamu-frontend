@@ -23,7 +23,7 @@ import { toast } from "@/components/ui/toaster";
 import { VenueTimezonePicker } from "@/components/venue-timezone-picker";
 import { StaffBrowserNotificationsSettings } from "@/components/staff-browser-notifications-settings";
 import { StaffNotificationSoundsSettings } from "@/components/staff-notification-sounds-settings";
-import { XenditPaymentCard } from "@/components/xendit-payment-card";
+import { PaymentGatewaysCard } from "@/components/payment-gateways-card";
 import { BookingDepositCard } from "@/components/booking-deposit-card";
 import { VenueLogoField } from "@/components/venue-logo-field";
 import { ApiError } from "@/lib/api/client";
@@ -1317,7 +1317,7 @@ export default function SettingsPage() {
               value="payments"
               className="mt-6 space-y-6 focus-visible:outline-none"
             >
-              <XenditPaymentCard />
+              <PaymentGatewaysCard />
               <BookingDepositCard />
             </TabsContent>
           </Tabs>
