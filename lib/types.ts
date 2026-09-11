@@ -725,6 +725,38 @@ export interface Ticket {
 export type PaymentStatus = "pending" | "paid" | "expired" | "failed";
 
 /** Redacted view of a tenant's Xendit payment-gateway connection. */
+/** Gateways a venue can take guest payments through. */
+export type PaymentProvider = "xendit" | "doku";
+
+/**
+ * Redacted connection state for one gateway. The fields diverge by provider —
+ * Xendit stores a separate callback token, DOKU signs with the secret key and
+ * so has a client id instead — hence the optionals.
+ */
+export interface PaymentGatewayConnection {
+  configured: boolean;
+  account_label?: string | null;
+  secret_key_hint?: string | null;
+  webhook_url?: string | null;
+  connected_at?: string | null;
+  /** Xendit only. */
+  callback_token_set?: boolean;
+  /** DOKU only. */
+  client_id_hint?: string | null;
+}
+
+export interface PaymentGatewayEntry {
+  provider: PaymentProvider;
+  label: string;
+  connection: PaymentGatewayConnection;
+}
+
+export interface PaymentGatewaysSnapshot {
+  /** null when the venue cannot take payments at all. */
+  active_provider: PaymentProvider | null;
+  providers: PaymentGatewayEntry[];
+}
+
 export interface XenditPaymentSnapshot {
   configured: boolean;
   account_label?: string | null;
