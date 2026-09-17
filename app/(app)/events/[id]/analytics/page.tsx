@@ -90,6 +90,35 @@ function ReportBody({ report }: { report: EventReport }) {
         />
       </div>
 
+      {/* Table bookings sit in their own block rather than the ticket grid
+          above: they're a different product sold to a different guest, and
+          adding their revenue to "Revenue" would double-count the night
+          against the ticket totals every other number here is about. */}
+      {report.tables && report.tables.tables_attached > 0 && (
+        <section className="rounded-xl border border-border bg-card p-5">
+          <h2 className="text-sm font-semibold">Table bookings</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Bookings taken during this event on the{" "}
+            {report.tables.tables_attached} table
+            {report.tables.tables_attached === 1 ? "" : "s"} attached to it. Separate
+            from ticket revenue above.
+          </p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Stat label="Bookings" value={report.tables.bookings} />
+            <Stat label="Covers" value={report.tables.covers} />
+            <Stat
+              label="Table revenue"
+              value={formatMoney(report.tables.revenue_cents, currency)}
+            />
+            <Stat
+              label="Lost"
+              value={report.tables.cancelled + report.tables.no_show}
+              hint={`${report.tables.cancelled} cancelled · ${report.tables.no_show} no-show`}
+            />
+          </div>
+        </section>
+      )}
+
       <ChartCard title="Tickets sold over time" subtitle="Daily sales by order date.">
         <SalesChart data={report.sales_series} />
       </ChartCard>

@@ -3,7 +3,7 @@
 import { use, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { CalendarClock, Check, MapPin, Minus, Plus } from "lucide-react";
+import { ArrowRight, CalendarClock, Check, MapPin, Minus, Plus } from "lucide-react";
 import { TamuLogo } from "@/components/tamu-brand";
 import { PhoneInput } from "@/components/phone-input";
 import { Button } from "@/components/ui/button";
@@ -64,7 +64,7 @@ export default function PublicEventPage({
   const event = eventQuery.data;
 
   return (
-    <EventShell event={event}>
+    <EventShell event={event} slug={slug}>
       {order ? (
         <PurchaseSuccess order={order} />
       ) : (
@@ -81,9 +81,12 @@ export default function PublicEventPage({
 function EventShell({
   event,
   children,
+  slug,
 }: {
   event: PublicEvent | null;
   children: React.ReactNode;
+  /** Venue slug, for the link through to table booking. */
+  slug?: string;
 }) {
   const primary = event?.page_config?.theme?.primary;
   const cover = event?.page_config?.theme?.cover_image_url;
@@ -126,6 +129,28 @@ function EventShell({
             <p className="mt-3 max-w-prose text-sm text-muted-foreground">
               {event.description}
             </p>
+          )}
+
+          {/* A guest who wants a table rather than a ticket had no route
+              forward from here at all. The date is computed server-side in the
+              venue's timezone — deriving it from starts_at in the browser would
+              send a 23:00 event to the previous day. */}
+          {event.local_date && slug && (
+            <div className="mt-5 flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/30 p-4">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium">Want a table for this night?</p>
+                <p className="text-sm text-muted-foreground">
+                  Book a table separately — some are reserved for this event and may be
+                  priced for the occasion.
+                </p>
+              </div>
+              <Button asChild variant="outline">
+                <Link href={`/book/${slug}?date=${event.local_date}`}>
+                  Book a table
+                  <ArrowRight className="h-4 w-4" aria-hidden />
+                </Link>
+              </Button>
+            </div>
           )}
         </header>
       )}

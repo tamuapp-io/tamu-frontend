@@ -925,6 +925,12 @@ export interface PublicEvent {
   ends_at: string | null;
   page_config: EventPageConfig | null;
   tenant_timezone?: string;
+  /**
+   * The event's `YYYY-MM-DD` in the venue's timezone, for linking through to
+   * the booking page. Computed server-side — a 23:00 WIB event derived from
+   * `starts_at` in the browser would link to the previous day.
+   */
+  local_date?: string | null;
   ticket_types: PublicTicketType[];
 }
 
@@ -974,6 +980,19 @@ export interface EventReport {
     avg_tickets_per_order: number;
     visitors: number;
     visitor_conversion_percent: number | null;
+  };
+  /**
+   * Table bookings taken for this event — a booking inside the event's hours
+   * on a table attached to it. Absent on older backends.
+   */
+  tables?: {
+    bookings: number;
+    covers: number;
+    /** TRUE cents, from each booking's quoted price snapshot. */
+    revenue_cents: number;
+    cancelled: number;
+    no_show: number;
+    tables_attached: number;
   };
   by_type: Array<{
     ticket_type_id: string;
