@@ -1,5 +1,9 @@
 import { api } from "@/lib/api/client";
-import type { PatchSettingsResponse, TenantSettingsSnapshot } from "@/lib/types";
+import type {
+  OperatingHourScopes,
+  PatchSettingsResponse,
+  TenantSettingsSnapshot,
+} from "@/lib/types";
 
 export async function fetchSettings(): Promise<{ data: TenantSettingsSnapshot }> {
   return api.get<{ data: TenantSettingsSnapshot }>("settings");
@@ -25,7 +29,17 @@ export async function syncBookingRules(payload: {
   );
 }
 
+/** Every scope's schedule — the venue's, plus each floor section's. */
+export async function fetchOperatingHourScopes(): Promise<{ data: OperatingHourScopes }> {
+  return api.get<{ data: OperatingHourScopes }>("settings/operating-hours");
+}
+
 export async function syncOperatingHours(payload: {
+  /**
+   * Which schedule this replaces. Omitted or null is the venue's, so every
+   * existing caller keeps its exact meaning; a section id replaces that area's.
+   */
+  floor_section_id?: string | null;
   periods: Array<{
     day_of_week: number;
     period_name: string;
@@ -36,11 +50,12 @@ export async function syncOperatingHours(payload: {
     max_covers?: number | null;
     is_closed?: boolean;
   }>;
-}): Promise<{ data: TenantSettingsSnapshot }> {
-  return api.put<{ data: TenantSettingsSnapshot }>(
-    "settings/operating-hours",
-    payload,
-  );
+}): Promise<{
+  data: TenantSettingsSnapshot & { operating_hour_scopes?: OperatingHourScopes };
+}> {
+  return api.put<{
+    data: TenantSettingsSnapshot & { operating_hour_scopes?: OperatingHourScopes };
+  }>("settings/operating-hours", payload);
 }
 
 /**

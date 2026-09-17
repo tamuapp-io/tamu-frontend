@@ -5,6 +5,7 @@ import { eventsApi, type ListBuyersQuery, type ListEventsQuery } from "@/lib/api
 import type {
   CreateEventPayload,
   CreateReferralPayload,
+  EventTablePayloadRow,
   TicketTypePayload,
   UpdateEventPayload,
 } from "@/lib/types";
@@ -21,6 +22,7 @@ export const eventsKeys = {
   attendees: (q: ListBuyersQuery & { event_id?: string }) =>
     [...eventsKeys.all, "attendees", q] as const,
   reportSummary: () => [...eventsKeys.all, "report-summary"] as const,
+  tables: (id: string) => [...eventsKeys.all, "tables", id] as const,
 };
 
 export function useEventsList(query: ListEventsQuery = {}) {
@@ -156,5 +158,28 @@ export function useCreateReferral(eventId: string) {
 export function useCheckInTicket() {
   return useMutation({
     mutationFn: async (code: string) => eventsApi.checkIn(code),
+  });
+}
+
+/** Tables this event takes over, plus whether a price here is collectable. */
+export function useEventTables(eventId: string) {
+  return useQuery({
+    queryKey: eventsKeys.tables(eventId),
+    queryFn: async () => (await eventsApi.listTables(eventId)).data,
+    enabled: !!eventId,
+  });
+}
+
+export function useSyncEventTables(eventId: string) {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (tables: EventTablePayloadRow[]) =>
+      (await eventsApi.syncTables(eventId, tables)).data,
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: eventsKeys.tables(eventId) });
+      // Guest prices for this event's nights are now stale.
+      void qc.invalidateQueries({ queryKey: ["public"] });
+    },
   });
 }

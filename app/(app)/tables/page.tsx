@@ -10,6 +10,7 @@ import { KpiStat } from "@/components/kpi-stat";
 import { SectionedFloorPlan } from "@/components/sectioned-floor-plan";
 import { VenueMapEditor } from "@/components/venue-map-editor";
 import { TableCombinationsPanel } from "@/components/table-combinations-panel";
+import { SectionHoursPanel } from "@/components/section-hours-panel";
 import { useHasFeature } from "@/lib/hooks/use-features";
 import { useCategory } from "@/lib/hooks/use-category";
 import { useQuery } from "@tanstack/react-query";
@@ -226,9 +227,7 @@ export default function TablesPage() {
             <TabsTrigger value="floor">Floor plan</TabsTrigger>
             {!isSpa && <TabsTrigger value="combinations">Combinations</TabsTrigger>}
             {hasVenueMap && <TabsTrigger value="map">Venue map</TabsTrigger>}
-            <TabsTrigger value="hours" disabled>
-              Hours <span className="ml-2 rounded bg-muted px-1 py-0.5 text-[10px]">P2</span>
-            </TabsTrigger>
+            {!isSpa && <TabsTrigger value="hours">Hours</TabsTrigger>}
           </TabsList>
 
           <TabsContent value="list" className="mt-4">
@@ -395,6 +394,15 @@ export default function TablesPage() {
           {hasVenueMap && (
             <TabsContent value="map" className="mt-4">
               <VenueMapEditor />
+            </TabsContent>
+          )}
+
+          {!isSpa && (
+            <TabsContent value="hours" className="mt-4">
+              {/* Hours live here, not only in Settings, because an area's opening
+                  times are a property of the floor — you set them looking at the
+                  sections they belong to. */}
+              <SectionHoursPanel />
             </TabsContent>
           )}
 

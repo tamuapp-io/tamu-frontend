@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { Clock, Copy, ExternalLink, MessageCircle, Plus, Trash2 } from "lucide-react";
+import { Clock, Copy, ExternalLink, MessageCircle } from "lucide-react";
 import { AppTopbar } from "@/components/app-topbar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -26,18 +26,22 @@ import { StaffNotificationSoundsSettings } from "@/components/staff-notification
 import { PaymentGatewaysCard } from "@/components/payment-gateways-card";
 import { BookingDepositCard } from "@/components/booking-deposit-card";
 import { VenueLogoField } from "@/components/venue-logo-field";
+import {
+  OperatingHoursEditor,
+  apiRowToDraft,
+  defaultHoursRow,
+  serializeHoursDraft,
+  type HoursDraftRow,
+} from "@/components/operating-hours-editor";
 import { ApiError } from "@/lib/api/client";
 import { fetchSettings, patchSettings, syncOperatingHours } from "@/lib/api/settings";
 import { useUpdatePassword, useUpdateProfile } from "@/lib/hooks/use-auth";
 import { useCategory } from "@/lib/hooks/use-category";
 import { useAuthStore } from "@/lib/store/auth-store";
 import type {
-  OperatingHourRow,
   TenantNotificationSettings,
   TenantSettingsSnapshot,
 } from "@/lib/types";
-
-const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 
 // 5, 10, 15, ..., 60 — matches the backend's `multiple_of:5` validation in
 // PatchTenantBrandingSettingsRequest and the snap/clamp in
@@ -47,77 +51,6 @@ const REMINDER_LEAD_OPTIONS: number[] = Array.from(
   (_, i) => (i + 1) * 5,
 );
 const REMINDER_LEAD_DEFAULT = 30;
-
-type HoursDraftRow = {
-  key: string;
-  day_of_week: number;
-  period_name: string;
-  open_time: string;
-  close_time: string;
-  slot_duration: number;
-  turn_buffer: number;
-  max_covers: string;
-  is_closed: boolean;
-};
-
-let hoursRowCounter = 0;
-
-function draftKeyFromApi(r: OperatingHourRow, i: number): string {
-  return r.id || `srv-${i}`;
-}
-
-function apiRowToDraft(r: OperatingHourRow, i: number): HoursDraftRow {
-  const ot = r.open_time ?? "";
-  const ct = r.close_time ?? "";
-
-  return {
-    key: draftKeyFromApi(r, i),
-    day_of_week: r.day_of_week,
-    period_name: r.period_name,
-    open_time: ot.length >= 8 ? ot.slice(0, 5) : ot,
-    close_time: ct.length >= 8 ? ct.slice(0, 5) : ct,
-    slot_duration: r.slot_duration,
-    turn_buffer: r.turn_buffer,
-    max_covers: r.max_covers != null ? String(r.max_covers) : "",
-    is_closed: r.is_closed,
-  };
-}
-
-function defaultHoursRow(): HoursDraftRow {
-  hoursRowCounter += 1;
-
-  return {
-    key: `new-${hoursRowCounter}`,
-    day_of_week: 1,
-    period_name: "Dinner",
-    open_time: "18:00",
-    close_time: "22:00",
-    slot_duration: 30,
-    turn_buffer: 15,
-    max_covers: "",
-    is_closed: false,
-  };
-}
-
-function serializeHoursDraft(rows: HoursDraftRow[]) {
-  return {
-    periods: rows.map((r) => ({
-      day_of_week: r.day_of_week,
-      period_name: r.period_name.trim() || "Service",
-      open_time: r.is_closed ? null : r.open_time.trim(),
-      close_time: r.is_closed ? null : r.close_time.trim(),
-      slot_duration: Math.min(180, Math.max(5, Number(r.slot_duration) || 30)),
-      turn_buffer: Math.min(240, Math.max(0, Number(r.turn_buffer) || 0)),
-      max_covers: (() => {
-        const t = r.max_covers.trim();
-        if (t === "") return null;
-        const n = Number.parseInt(t, 10);
-        return Number.isFinite(n) ? n : null;
-      })(),
-      is_closed: r.is_closed,
-    })),
-  };
-}
 
 type RestaurantDraft = {
   name: string;
@@ -812,244 +745,24 @@ export default function SettingsPage() {
             </TabsContent>
 
             <TabsContent value="hours" className="mt-6 space-y-6 focus-visible:outline-none">
-            <Card className="overflow-hidden shadow-xs">
-              <div className="border-b border-border bg-muted/30 px-6 py-4">
-                <h2 className="text-sm font-semibold">Opening hours &amp; slots</h2>
-                <p className="text-xs text-muted-foreground">
-                  Times follow your venue timezone ({settings.data.restaurant.timezone}). Slot step
-                  is the interval between bookable start times; turn buffer is spacing between
-                  parties.
-                </p>
-              </div>
-              <div className="space-y-4 p-6">
-                {saveHours.error instanceof ApiError &&
-                  !saveHours.error.errors &&
-                  typeof saveHours.error.message === "string" && (
-                    <p className="text-sm text-destructive" role="alert">
-                      {saveHours.error.message}
-                    </p>
-                  )}
-                <div className="space-y-4">
-                  {hoursDraft.map((row, idx) => (
-                    <div
-                      key={row.key}
-                      className="space-y-3 rounded-lg border border-border bg-muted/10 p-4"
-                    >
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <span className="text-[11px] font-medium uppercase text-muted-foreground">
-                          Period {idx + 1}
-                        </span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 text-destructive hover:text-destructive"
-                          disabled={hoursDraft.length <= 1 || saveHours.isPending}
-                          onClick={() =>
-                            setHoursDraft((rows) =>
-                              rows && rows.length > 1
-                                ? rows.filter((_, i) => i !== idx)
-                                : rows,
-                            )
-                          }
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          <span className="sr-only">Remove period</span>
-                        </Button>
-                      </div>
-                      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                        <div className="space-y-1.5">
-                          <Label className="text-xs">Day</Label>
-                          <Select
-                            value={String(row.day_of_week)}
-                            onValueChange={(v) =>
-                              setHoursDraft((rows) =>
-                                rows?.map((r, i) =>
-                                  i === idx ? { ...r, day_of_week: Number(v) } : r,
-                                ) ?? rows,
-                              )
-                            }
-                            disabled={row.is_closed}
-                          >
-                            <SelectTrigger className="h-9">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {DAY_LABELS.map((label, dow) => (
-                                <SelectItem key={label} value={String(dow)}>
-                                  {label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-1.5 sm:col-span-2 lg:col-span-1">
-                          <Label className="text-xs">Period name</Label>
-                          <Input
-                            className="h-9"
-                            value={row.period_name}
-                            onChange={(e) =>
-                              setHoursDraft((rows) =>
-                                rows?.map((r, i) =>
-                                  i === idx ? { ...r, period_name: e.target.value } : r,
-                                ) ?? rows,
-                              )
-                            }
-                            placeholder="e.g. Lunch"
-                            disabled={row.is_closed}
-                          />
-                        </div>
-                        <div className="flex items-end gap-2 sm:col-span-2 lg:col-span-2">
-                          <div className="flex grow items-center justify-between rounded-md border border-border px-3 py-2">
-                            <Label className="text-xs font-normal">Closed</Label>
-                            <Switch
-                              checked={row.is_closed}
-                              onCheckedChange={(is_closed) =>
-                                setHoursDraft((rows) =>
-                                  rows?.map((r, i) =>
-                                    i === idx ? { ...r, is_closed } : r,
-                                  ) ?? rows,
-                                )
-                              }
-                            />
-                          </div>
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label className="text-xs">Opens</Label>
-                          <Input
-                            className="h-9"
-                            type="time"
-                            value={row.open_time}
-                            onChange={(e) =>
-                              setHoursDraft((rows) =>
-                                rows?.map((r, i) =>
-                                  i === idx ? { ...r, open_time: e.target.value } : r,
-                                ) ?? rows,
-                              )
-                            }
-                            disabled={row.is_closed}
-                          />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label className="text-xs">Closes</Label>
-                          <Input
-                            className="h-9"
-                            type="time"
-                            value={row.close_time}
-                            onChange={(e) =>
-                              setHoursDraft((rows) =>
-                                rows?.map((r, i) =>
-                                  i === idx ? { ...r, close_time: e.target.value } : r,
-                                ) ?? rows,
-                              )
-                            }
-                            disabled={row.is_closed}
-                          />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label className="text-xs">Slot step (min)</Label>
-                          <Input
-                            className="h-9"
-                            type="number"
-                            min={5}
-                            max={180}
-                            value={row.slot_duration || ""}
-                            onChange={(e) =>
-                              setHoursDraft((rows) =>
-                                rows?.map((r, i) =>
-                                  i === idx
-                                    ? {
-                                        ...r,
-                                        slot_duration:
-                                          Number.parseInt(e.target.value, 10) || 0,
-                                      }
-                                    : r,
-                                ) ?? rows,
-                              )
-                            }
-                            disabled={row.is_closed}
-                          />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label className="text-xs">Turn buffer (min)</Label>
-                          <Input
-                            className="h-9"
-                            type="number"
-                            min={0}
-                            max={240}
-                            value={row.turn_buffer}
-                            onChange={(e) =>
-                              setHoursDraft((rows) =>
-                                rows?.map((r, i) =>
-                                  i === idx
-                                    ? {
-                                        ...r,
-                                        turn_buffer:
-                                          Number.parseInt(e.target.value, 10) || 0,
-                                      }
-                                    : r,
-                                ) ?? rows,
-                              )
-                            }
-                            disabled={row.is_closed}
-                          />
-                        </div>
-                        <div className="space-y-1.5 sm:col-span-2">
-                          <Label className="text-xs">
-                            Max covers / slot{" "}
-                            <span className="font-normal text-muted-foreground">
-                              (optional)
-                            </span>
-                          </Label>
-                          <Input
-                            className="h-9"
-                            type="number"
-                            min={1}
-                            placeholder="No limit"
-                            value={row.max_covers}
-                            onChange={(e) =>
-                              setHoursDraft((rows) =>
-                                rows?.map((r, i) =>
-                                  i === idx ? { ...r, max_covers: e.target.value } : r,
-                                ) ?? rows,
-                              )
-                            }
-                            disabled={row.is_closed}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setHoursDraft((rows) => [...(rows ?? []), defaultHoursRow()])}
-                  disabled={saveHours.isPending}
-                >
-                  <Plus className="mr-1.5 h-4 w-4" />
-                  Add period
-                </Button>
-              </div>
-              <div className="flex flex-wrap gap-3 border-t border-border bg-muted/10 px-6 py-4">
-                <Button
-                  type="button"
-                  disabled={saveHours.isPending || hoursDraft.length < 1}
-                  onClick={() => saveHours.mutate(serializeHoursDraft(hoursDraft))}
-                >
-                  {saveHours.isPending ? "Saving…" : "Save hours & slots"}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => resetHoursFromServer()}
-                  disabled={saveHours.isPending}
-                >
-                  Reset hours
-                </Button>
-              </div>
-            </Card>
+              {/* The editor itself lives in components/operating-hours-editor so
+                  Tables & Floor can host the same one for a single area. This
+                  page still owns its own query and mutation. */}
+              <OperatingHoursEditor
+                timezone={settings.data.restaurant.timezone}
+                rows={hoursDraft}
+                onChange={setHoursDraft}
+                onSave={() => saveHours.mutate(serializeHoursDraft(hoursDraft))}
+                onReset={() => resetHoursFromServer()}
+                saving={saveHours.isPending}
+                error={saveHours.error}
+                footer={
+                  <p className="text-xs text-muted-foreground">
+                    An individual area can keep its own hours — set those under{" "}
+                    <span className="font-medium text-foreground">Tables &amp; Floor &rarr; Hours</span>.
+                  </p>
+                }
+              />
             </TabsContent>
 
             <TabsContent value="booking" className="mt-6 space-y-6 focus-visible:outline-none">
