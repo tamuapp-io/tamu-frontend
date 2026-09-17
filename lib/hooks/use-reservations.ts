@@ -94,8 +94,11 @@ export function useRescheduleReservation() {
 export function useReassignReservationTable() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, table_id }: { id: string; table_id: string }) =>
-      (await reservationsApi.reassignTable(id, table_id)).data,
+    mutationFn: async ({
+      id,
+      ...body
+    }: { id: string; table_id?: string; combination_id?: string }) =>
+      (await reservationsApi.reassignTable(id, body)).data,
     onSuccess: () => invalidateReservationFeeds(qc),
   });
 }

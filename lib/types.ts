@@ -204,6 +204,8 @@ export interface Reservation {
   staff_notes?: string | null;
   table_id?: string | null;
   combination_id?: string | null;
+  /** Present when eager-loaded; the id alone is unresolvable client-side. */
+  combination?: { id: string; name: string } | null;
   /** Present when eager-loaded alongside single-table bookings. */
   table?: Table | null;
   tables?: Table[];
@@ -438,6 +440,12 @@ export interface PublicCreateReservationPayload {
   reserved_at: string;
   /** Guest-chosen table — honoured only for venues with the venue_map feature. */
   table_id?: string;
+  /**
+   * Guest-chosen table group, for a party no single table seats. Honoured only
+   * when the venue has combinations switched on, and never together with
+   * `table_id` — the server rejects both.
+   */
+  combination_id?: string;
   /**
    * Pre-ordered menu lines — honoured only for venues with the menu_ordering
    * feature AND a connected gateway. Ids and quantities only: the server prices
@@ -1083,6 +1091,29 @@ export interface CrmAutomations {
 /* Floor sections (customizable table areas)                               */
 /* ----------------------------------------------------------------------- */
 
+/**
+ * A named group of tables that can be booked as one unit (push two 4-tops
+ * together for a party of 8).
+ */
+export interface TableCombination {
+  id: string;
+  tenant_id: string;
+  name: string;
+  /** Null derives max(member max_capacity) + 1. */
+  min_capacity: number | null;
+  max_capacity: number;
+  /** What the engine actually uses — the stored ceiling clamped to the live members. */
+  effective_min_capacity: number;
+  effective_max_capacity: number;
+  is_active: boolean;
+  /** False when retired, under two members, or a member is inactive. */
+  is_bookable: boolean;
+  /** Why it can't seat, in words a manager can act on. Null when bookable. */
+  blocked_reason: string | null;
+  table_ids: string[];
+  tables?: Table[];
+}
+
 export interface FloorSection {
   id: string;
   name: string;
@@ -1152,6 +1183,29 @@ export interface VenueMapTable {
 }
 
 /**
+ * A group of tables pushed together, offered to a guest whose party fits no
+ * single table.
+ *
+ * There is no `name`: the internal label ("A+B") is a staff concept. Guests
+ * are shown the tables themselves, which is also what they'll look for when
+ * they arrive.
+ */
+export interface VenueMapCombination {
+  id: string;
+  min_capacity: number;
+  max_capacity: number;
+  /** TRUE cents (IDR × 100) — the sum of every member table. */
+  price_cents: number;
+  state: VenueMapTableState;
+  tables: Array<{
+    id: string;
+    name: string;
+    shape: string;
+    map_position: VenueMapTable["map_position"];
+  }>;
+}
+
+/**
  * The spot-picking step. Carries no artwork on purpose — it is the same venue
  * map the area step already loaded, and re-sending it would make the client
  * re-fetch and blink between steps.
@@ -1164,6 +1218,8 @@ export interface VenueMapSectionTables {
     description?: string | null;
   } & VenueMapArea) | null;
   tables: VenueMapTable[];
+  /** Absent on venues with combinations switched off. */
+  combinations?: VenueMapCombination[];
 }
 
 /** One stored map in the staff editor snapshot. */

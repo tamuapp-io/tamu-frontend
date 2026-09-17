@@ -29,6 +29,7 @@ import { VenueLogoField } from "@/components/venue-logo-field";
 import { ApiError } from "@/lib/api/client";
 import { fetchSettings, patchSettings, syncOperatingHours } from "@/lib/api/settings";
 import { useUpdatePassword, useUpdateProfile } from "@/lib/hooks/use-auth";
+import { useCategory } from "@/lib/hooks/use-category";
 import { useAuthStore } from "@/lib/store/auth-store";
 import type {
   OperatingHourRow,
@@ -168,6 +169,8 @@ function snapshotToDraft(snapshot: TenantSettingsSnapshot): RestaurantDraft {
 
 export default function SettingsPage() {
   const qc = useQueryClient();
+  // Combinations are meaningless for spa (rooms/therapists, not tables).
+  const { isSpa } = useCategory();
   const mergeTenant = useAuthStore((s) => s.mergeTenant);
   const user = useAuthStore((s) => s.user);
   const updateProfile = useUpdateProfile();
@@ -272,6 +275,13 @@ export default function SettingsPage() {
   const waitlistCfg = (
     typeof data?.waitlist === "object" && data?.waitlist !== null ? data.waitlist : {}
   ) as { enabled?: boolean; auto_promote?: boolean };
+
+  // Combinations default OFF — see Tenant::combinationsEnabled() for why.
+  const combinationsCfg = (
+    typeof data?.combinations === "object" && data?.combinations !== null
+      ? data.combinations
+      : {}
+  ) as { enabled?: boolean };
 
   const notificationsCfg = (
     typeof data?.notifications === "object" && data?.notifications !== null
@@ -1080,6 +1090,28 @@ export default function SettingsPage() {
                     }
                   />
                 </div>
+
+                {!isSpa && (
+                  <div className="flex items-start justify-between gap-4 py-4">
+                    <div>
+                      <Label className="text-sm font-semibold">Table combinations</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Seat large parties across two or more tables pushed together, when
+                        no single table is free. Define the groups in Tables &amp; Floor.
+                      </p>
+                    </div>
+                    <Switch
+                      /* `=== true`, not `!== false`: this defaults OFF, unlike the
+                         waitlist above. Fixing the engine with a default of on would
+                         have changed seating for every venue on deploy day. */
+                      checked={combinationsCfg.enabled === true}
+                      disabled={patch.isPending}
+                      onCheckedChange={(enabled) =>
+                        patch.mutate({ combinations: { ...combinationsCfg, enabled } })
+                      }
+                    />
+                  </div>
+                )}
               </div>
             </Card>
 

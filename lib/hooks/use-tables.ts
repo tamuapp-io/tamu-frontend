@@ -1,7 +1,13 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { floorSectionsApi, tablesApi, type ListTablesQuery } from "@/lib/api/tables";
+import {
+  floorSectionsApi,
+  tableCombinationsApi,
+  tablesApi,
+  type CombinationPayload,
+  type ListTablesQuery,
+} from "@/lib/api/tables";
 import type { CreateTablePayload, Table, UpdateTablePayload } from "@/lib/types";
 
 export const tablesKeys = {
@@ -162,4 +168,43 @@ export function useUpdateTablePositions() {
       void qc.invalidateQueries({ queryKey: tablesKeys.all });
     },
   });
+}
+
+export const tableCombinationsKey = ["table-combinations"] as const;
+
+/**
+ * Table groups for this venue. Read-only for any staff member — the seating
+ * pickers need them to recognise a multi-table selection as a saved group.
+ */
+export function useTableCombinations() {
+  return useQuery({
+    queryKey: tableCombinationsKey,
+    queryFn: async () => (await tableCombinationsApi.list()).data,
+  });
+}
+
+export function useTableCombinationMutations() {
+  const qc = useQueryClient();
+  const invalidate = () => {
+    void qc.invalidateQueries({ queryKey: tableCombinationsKey });
+    // A group's membership changes what the floor shows as grouped.
+    void qc.invalidateQueries({ queryKey: tablesKeys.all });
+  };
+
+  const create = useMutation({
+    mutationFn: (payload: CombinationPayload) => tableCombinationsApi.create(payload),
+    onSuccess: invalidate,
+  });
+  const update = useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: Partial<CombinationPayload> }) =>
+      tableCombinationsApi.update(id, payload),
+    onSuccess: invalidate,
+  });
+  /** Retires the group; the API keeps the row so past bookings keep their label. */
+  const retire = useMutation({
+    mutationFn: (id: string) => tableCombinationsApi.remove(id),
+    onSuccess: invalidate,
+  });
+
+  return { create, update, retire };
 }

@@ -48,10 +48,9 @@ export const reservationsApi = {
     }),
   reschedule: (id: string, payload: RescheduleReservationPayload) =>
     api.put<ItemEnvelope<Reservation>>(`reservations/${id}`, payload),
-  reassignTable: (id: string, table_id: string) =>
-    api.patch<ItemEnvelope<Reservation>>(`reservations/${id}/table`, {
-      table_id,
-    }),
+  /** Move a booking onto a different table OR saved group at the same slot. */
+  reassignTable: (id: string, body: { table_id?: string; combination_id?: string }) =>
+    api.patch<ItemEnvelope<Reservation>>(`reservations/${id}/table`, body),
   addNote: (id: string, note: string) =>
     api.post<ItemEnvelope<Reservation>>(`reservations/${id}/notes`, { note }),
 };

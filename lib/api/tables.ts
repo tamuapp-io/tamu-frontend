@@ -2,6 +2,7 @@ import { api } from "@/lib/api/client";
 import type {
   CreateTablePayload,
   FloorSection,
+  TableCombination,
   ItemEnvelope,
   ListEnvelope,
   Table,
@@ -55,4 +56,33 @@ export const floorSectionsApi = {
   remove: (id: string) => api.delete<void>(`tables/sections/${id}`),
   reorder: (ids: string[]) =>
     api.post<ListEnvelope<FloorSection>>("tables/sections/reorder", { ids }),
+};
+
+export interface CombinationPayload {
+  name: string;
+  table_ids: string[];
+  /** Null derives max(member max_capacity) + 1 server-side. */
+  min_capacity?: number | null;
+  /** Must not exceed the members' summed capacity; lower is a legitimate override. */
+  max_capacity?: number;
+  is_active?: boolean;
+}
+
+/**
+ * Table groups. Reads are open to any staff member (the seating pickers need
+ * them); writes are owner/manager, enforced by the API.
+ *
+ * `remove` RETIRES the group rather than deleting it — past bookings keep their
+ * group label.
+ */
+export const tableCombinationsApi = {
+  list: () => api.get<ListEnvelope<TableCombination>>("tables/combinations"),
+  get: (id: string) =>
+    api.get<ItemEnvelope<TableCombination>>(`tables/combinations/${id}`),
+  create: (payload: CombinationPayload) =>
+    api.post<ItemEnvelope<TableCombination>>("tables/combinations", payload),
+  update: (id: string, payload: Partial<CombinationPayload>) =>
+    api.patch<ItemEnvelope<TableCombination>>(`tables/combinations/${id}`, payload),
+  remove: (id: string) =>
+    api.delete<ItemEnvelope<TableCombination>>(`tables/combinations/${id}`),
 };

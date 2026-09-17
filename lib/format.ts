@@ -262,12 +262,36 @@ export function statusClass(status: string) {
   return status;
 }
 
-/** Label for public/guest display: "T7 · Indoor" or comma-joined for combinations. */
+/**
+ * Label for public/guest display: "T7 · Indoor", or "A and B" across a group.
+ *
+ * Guests never see the internal group name ("A+B", "Big group 1") — that's
+ * staff shorthand. They see the tables, and-joined so a two-table seating reads
+ * like a sentence rather than a list.
+ */
 export function formatGuestAssignedTables(
   tables: { name: string; section?: string | null }[] | undefined,
 ): string | null {
   if (!tables?.length) return null;
-  return tables
-    .map((t) => (t.section ? `${t.name} · ${t.section}` : t.name))
-    .join(", ");
+
+  const labels = tables.map((t) => (t.section ? `${t.name} · ${t.section}` : t.name));
+
+  if (labels.length === 1) return labels[0];
+
+  return `${labels.slice(0, -1).join(", ")} and ${labels[labels.length - 1]}`;
+}
+
+/**
+ * One line of reassurance when a party is seated across more than one table —
+ * being split is worth explaining before the guest arrives and wonders.
+ */
+export function guestCombinationNote(
+  tableCount: number | undefined,
+  partySize: number | undefined,
+): string | null {
+  if (!tableCount || tableCount < 2) return null;
+
+  const party = partySize ? `Your party of ${partySize} is` : "You're";
+
+  return `${party} seated across ${tableCount === 2 ? "two" : tableCount} tables placed together.`;
 }

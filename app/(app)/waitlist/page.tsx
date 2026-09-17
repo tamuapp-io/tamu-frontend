@@ -15,6 +15,10 @@ import {
 } from "@/lib/api/waitlist-staff";
 import { useTenantTimezone } from "@/lib/hooks/use-tenant-timezone";
 import type { WaitlistEntryPublic } from "@/lib/types";
+import { PromoteWaitlistDialog } from "@/components/promote-waitlist-dialog";
+
+/** A waitlist row as this page renders it. */
+type WaitlistRow = WaitlistEntryPublic & { position: number };
 import { todayISOInTz, formatDateInTz, formatTimeInTz } from "@/lib/format";
 
 export default function WaitlistStaffPage() {
@@ -29,10 +33,22 @@ export default function WaitlistStaffPage() {
       fetchWaitlistForDate(date).then((r) => ({ rows: r.data })),
   });
 
+  // Where to seat them. Empty = let the engine choose, which is what this
+  // always did; a picked group now reaches the API, which has accepted
+  // combination_id all along without any UI ever sending it.
+  const [promoting, setPromoting] = useState<WaitlistRow | null>(null);
+
   const promote = useMutation({
-    mutationFn: (id: string) => promoteWaitlistEntry(id, {}),
+    mutationFn: ({
+      id,
+      body,
+    }: {
+      id: string;
+      body: { table_id?: string | null; combination_id?: string | null };
+    }) => promoteWaitlistEntry(id, body),
     onSuccess: (res) => {
       setPromotedCode(res.data.confirmation_code);
+      setPromoting(null);
       qc.invalidateQueries({ queryKey: ["staff-waitlist"], exact: false });
       qc.invalidateQueries({ queryKey: ["reservations"], exact: false });
     },
@@ -91,11 +107,20 @@ export default function WaitlistStaffPage() {
               row={{ ...row, position: typeof row.position === "number" ? row.position : i + 1 }}
               timeZone={tz}
               busy={promote.isPending || remove.isPending}
-              onPromote={(id) => promote.mutate(id)}
+              onPromote={(row) => setPromoting(row)}
               onRemove={(id) => remove.mutate(id)}
             />
           ))}
       </div>
+      <PromoteWaitlistDialog
+        row={promoting}
+        timeZone={tz}
+        open={promoting !== null}
+        onOpenChange={(open) => !open && setPromoting(null)}
+        pending={promote.isPending}
+        onConfirm={(body) => promoting && promote.mutate({ id: promoting.id, body })}
+      />
+
     </>
   );
 }
@@ -110,7 +135,7 @@ function WaitlistRowView({
   row: WaitlistEntryPublic & { position: number };
   timeZone: string;
   busy: boolean;
-  onPromote: (id: string) => void;
+  onPromote: (row: WaitlistRow) => void;
   onRemove: (id: string) => void;
 }) {
   const guestBits = row.guest
@@ -155,7 +180,7 @@ function WaitlistRowView({
           type="button"
           size="sm"
           disabled={busy}
-          onClick={() => void onPromote(row.id)}
+          onClick={() => onPromote(row)}
         >
           Promote → booking
         </Button>
