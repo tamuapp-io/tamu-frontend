@@ -56,7 +56,12 @@ export interface VenueMapBox {
 interface VenueMapCanvasProps {
   asset: VenueMapAsset | null;
   hotspots: VenueMapHotspot[];
-  selectedId?: string | null;
+  /**
+   * An array selects several hotspots at once — a table group occupies every
+   * table it is pushed together from, and highlighting only the first would
+   * leave the rest looking free.
+   */
+  selectedId?: string | string[] | null;
   onSelect?: (id: string) => void;
   /** Fallback when the venue hasn't uploaded artwork for this scope. */
   emptyLabel?: string;
@@ -682,7 +687,9 @@ export function VenueMapCanvas({
             })}
 
             {hotspots.map((h) => {
-              const isSelected = h.id === selectedId;
+              const isSelected = Array.isArray(selectedId)
+                ? selectedId.includes(h.id)
+                : h.id === selectedId;
               const state: FloorState = isSelected ? "selected" : h.state;
               const glyph = floorStateGlyph(state);
               // While dragging, render the live box rather than the saved one

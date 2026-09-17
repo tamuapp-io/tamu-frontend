@@ -22,7 +22,8 @@ import {
 } from "@/components/ui/select";
 import { TableFloorPicker } from "@/components/table-floor-picker";
 import { useCreateReservation } from "@/lib/hooks/use-reservations";
-import { useTablesList, useFloorSections } from "@/lib/hooks/use-tables";
+import { useTablesList, useFloorSections, useTableCombinations } from "@/lib/hooks/use-tables";
+import { combinationCapacityError, matchAssignment } from "@/lib/combination-match";
 import { useTenantTimezone } from "@/lib/hooks/use-tenant-timezone";
 import { ApiError } from "@/lib/api/client";
 import { formatDateInTz, formatTimeInTz } from "@/lib/format";
@@ -42,7 +43,13 @@ export function WalkinDialog({ open, onOpenChange, timeZone: timeZoneProp }: Wal
   const create = useCreateReservation();
 
   const [partySize, setPartySize] = useState(2);
-  const [tableId, setTableId] = useState<string | null>(null);
+  // Multi-select: several tables resolve to a saved group, one resolves to a
+  // table, and anything else blocks submission rather than silently sending one.
+  const [tableIds, setTableIds] = useState<string[]>([]);
+  const combinations = useTableCombinations();
+  const assignment = matchAssignment(tableIds, combinations.data ?? []);
+  const capacityError = combinationCapacityError(assignment, partySize);
+  const blocked = assignment.kind === "none" || capacityError !== null;
   const [section, setSection] = useState<string>("all");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -95,7 +102,7 @@ export function WalkinDialog({ open, onOpenChange, timeZone: timeZoneProp }: Wal
 
   function reset() {
     setPartySize(2);
-    setTableId(null);
+    setTableIds([]);
     setSection("all");
     setName("");
     setPhone("");
@@ -117,7 +124,10 @@ export function WalkinDialog({ open, onOpenChange, timeZone: timeZoneProp }: Wal
         },
         special_requests: requests.trim() || undefined,
         source: "walkin",
-        table_id: tableId ?? undefined,
+        ...(assignment.kind === "table" ? { table_id: assignment.table_id } : {}),
+        ...(assignment.kind === "combination"
+          ? { combination_id: assignment.combination_id }
+          : {}),
       });
       toast.success(
         "Walked in",
@@ -211,7 +221,7 @@ export function WalkinDialog({ open, onOpenChange, timeZone: timeZoneProp }: Wal
                     onValueChange={(v) => {
                       setSection(v);
                       // The picked table may not live in the new section.
-                      setTableId(null);
+                      setTableIds([]);
                     }}
                   >
                     <SelectTrigger className="h-8 w-[150px]" aria-label="Floor section">
@@ -229,13 +239,13 @@ export function WalkinDialog({ open, onOpenChange, timeZone: timeZoneProp }: Wal
                 )}
                 <Button
                   type="button"
-                  variant={tableId === null ? "accent" : "outline"}
+                  variant={tableIds.length === 0 ? "accent" : "outline"}
                   size="sm"
                   className="h-8"
-                  onClick={() => setTableId(null)}
+                  onClick={() => setTableIds([])}
                 >
                   <Sparkles className="mr-1.5 h-3.5 w-3.5" />
-                  {tableId === null ? "Auto-assigning" : "Auto-assign instead"}
+                  {tableIds.length === 0 ? "Auto-assigning" : "Auto-assign instead"}
                 </Button>
               </div>
             </div>
@@ -243,10 +253,32 @@ export function WalkinDialog({ open, onOpenChange, timeZone: timeZoneProp }: Wal
               reservedAt={reservedAtIso}
               durationMins={duration}
               partySize={partySize}
-              value={tableId}
-              onChange={setTableId}
+              value={null}
+              onChange={() => {}}
+              mode="multi"
+              selectedIds={tableIds}
+              onChangeMulti={setTableIds}
+              combinations={combinations.data ?? []}
               section={section}
             />
+            {assignment.kind === "none" && (
+              <p className="text-xs text-amber-700 dark:text-amber-200">
+                Those tables aren&apos;t a saved group — create it in Tables &rarr;
+                Combinations, or pick a single table.
+              </p>
+            )}
+            {assignment.kind === "combination" && !capacityError && (
+              <p className="text-xs text-muted-foreground">
+                Seating on{" "}
+                <span className="font-medium text-foreground">
+                  {assignment.combination.name}
+                </span>{" "}
+                · seats {assignment.combination.effective_max_capacity}.
+              </p>
+            )}
+            {capacityError && (
+              <p className="text-xs text-amber-700 dark:text-amber-200">{capacityError}</p>
+            )}
             {fieldErrors.table_id?.[0] && (
               <p className="text-xs text-destructive">{fieldErrors.table_id[0]}</p>
             )}
@@ -300,7 +332,7 @@ export function WalkinDialog({ open, onOpenChange, timeZone: timeZoneProp }: Wal
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={create.isPending} variant="accent">
+            <Button type="submit" disabled={create.isPending || blocked} variant="accent">
               {create.isPending ? "Seating…" : "Seat now"}
             </Button>
           </DialogFooter>

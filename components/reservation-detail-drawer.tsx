@@ -35,6 +35,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/toaster";
+import { combinationCapacityError, matchAssignment } from "@/lib/combination-match";
+import { useTableCombinations } from "@/lib/hooks/use-tables";
 import { ApiError } from "@/lib/api/client";
 import type { Reservation, ReservationStatus } from "@/lib/types";
 import type { StaffReservationTransition } from "@/lib/api/reservations";
@@ -167,10 +169,19 @@ export function ReservationDetailDrawer({
                       </dd>
                       <dt className="text-muted-foreground">Table</dt>
                       <dd className="font-medium">
-                        {r.table?.name
-                          ?? (r.tables && r.tables.length > 0
-                            ? r.tables.map((t) => t.name).join(", ")
-                            : "—")}
+                        {r.combination ? (
+                          <>
+                            {r.combination.name}
+                            <span className="ml-2 text-xs font-normal text-muted-foreground">
+                              {(r.tables ?? []).map((t) => t.name).join(" + ")}
+                            </span>
+                          </>
+                        ) : (
+                          r.table?.name
+                            ?? (r.tables && r.tables.length > 0
+                              ? r.tables.map((t) => t.name).join(" + ")
+                              : "—")
+                        )}
                       </dd>
                     </>
                   )}
@@ -531,20 +542,29 @@ function MoveTableDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const reassign = useReassignReservationTable();
-  const [tableId, setTableId] = useState<string | null>(null);
+  const combinations = useTableCombinations();
+  const [ids, setIds] = useState<string[]>([]);
+
+  const match = matchAssignment(ids, combinations.data ?? []);
+  const capacityError = combinationCapacityError(match, reservation.party_size);
 
   function handleOpenChange(next: boolean) {
     if (next) {
-      setTableId(null);
+      setIds([]);
     }
     onOpenChange(next);
   }
 
   async function handleMove() {
-    if (!tableId) return;
+    if (match.kind !== "table" && match.kind !== "combination") return;
     try {
-      await reassign.mutateAsync({ id: reservation.id, table_id: tableId });
-      toast.success("Table reassigned");
+      await reassign.mutateAsync({
+        id: reservation.id,
+        ...(match.kind === "table"
+          ? { table_id: match.table_id }
+          : { combination_id: match.combination_id }),
+      });
+      toast.success(match.kind === "combination" ? "Moved to " + match.combination.name : "Table reassigned");
       handleOpenChange(false);
     } catch (err) {
       const message = err instanceof ApiError ? err.message : "Could not move table";
@@ -553,9 +573,17 @@ function MoveTableDialog({
   }
 
   const currentTableName =
+    reservation.combination?.name ??
     reservation.table?.name ??
-    reservation.tables?.map((t) => t.name).join(", ") ??
+    reservation.tables?.map((t) => t.name).join(" + ") ??
     null;
+
+  // A group booking holds several tables; passing only `table_id` (NULL for a
+  // group) made its own tables render as busy against itself.
+  const currentTableIds = [
+    ...(reservation.table_id ? [reservation.table_id] : []),
+    ...(reservation.tables ?? []).map((t) => t.id),
+  ];
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -579,11 +607,33 @@ function MoveTableDialog({
             reservedAt={reservation.reserved_at}
             durationMins={reservation.duration_mins}
             partySize={reservation.party_size}
-            value={tableId}
-            onChange={setTableId}
+            value={null}
+            onChange={() => {}}
+            mode="multi"
+            selectedIds={ids}
+            onChangeMulti={setIds}
+            combinations={combinations.data ?? []}
             excludeReservationId={reservation.id}
-            currentTableId={reservation.table_id ?? undefined}
+            currentTableIds={currentTableIds}
           />
+
+          {match.kind === "none" && (
+            <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-100">
+              Those tables aren&apos;t a saved group. Create it in Tables &rarr; Combinations
+              first, or pick a single table.
+            </p>
+          )}
+          {capacityError && (
+            <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-100">
+              {capacityError}
+            </p>
+          )}
+          {match.kind === "combination" && !capacityError && (
+            <p className="rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+              Moving to <span className="font-medium text-foreground">{match.combination.name}</span> —
+              seats {match.combination.effective_max_capacity}.
+            </p>
+          )}
         </div>
 
         <DialogFooter>
@@ -592,7 +642,11 @@ function MoveTableDialog({
           </Button>
           <Button
             onClick={handleMove}
-            disabled={!tableId || reassign.isPending}
+            disabled={
+              (match.kind !== "table" && match.kind !== "combination")
+              || capacityError !== null
+              || reassign.isPending
+            }
           >
             {reassign.isPending ? "Moving…" : "Move"}
           </Button>

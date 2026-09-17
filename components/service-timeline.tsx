@@ -49,18 +49,37 @@ export function ServiceTimeline({
   const minutesShown = hours * 60;
   const pxPerMinute = HOUR_COL_WIDTH / 60;
 
-  // Group reservations by table id (or "unassigned" key)
+  // One lane per table, with a reservation appearing in EVERY lane it occupies.
+  //
+  // This used to key on `r.table_id ?? r.tables?.[0]?.id`, so a booking spanning
+  // a table group showed on its first member's lane only — leaving the other
+  // tables looking free to whoever is running the floor mid-service.
   const lanes = useMemo(() => {
     const tableMap = new Map<string, Table>();
     for (const t of tables) tableMap.set(t.id, t);
 
     const byLane = new Map<string, { table?: Table; items: Reservation[] }>();
-    for (const r of reservations) {
-      const id = r.table_id ?? r.tables?.[0]?.id ?? "unassigned";
+
+    const push = (id: string, r: Reservation) => {
       if (!byLane.has(id)) {
         byLane.set(id, { table: tableMap.get(id), items: [] });
       }
       byLane.get(id)!.items.push(r);
+    };
+
+    for (const r of reservations) {
+      const occupied = [
+        ...(r.table_id ? [r.table_id] : []),
+        ...(r.tables ?? []).map((t) => t.id),
+      ];
+      const unique = [...new Set(occupied)];
+
+      if (unique.length === 0) {
+        push("unassigned", r);
+        continue;
+      }
+
+      for (const id of unique) push(id, r);
     }
 
     return Array.from(byLane.entries())
@@ -235,6 +254,11 @@ export function ServiceTimeline({
                         (r.source === "walkin"
                           ? "Walk-in"
                           : `Party of ${r.party_size}`)}
+                      {/* Named so the same bar appearing on several lanes reads
+                          as one booking across a group, not several bookings. */}
+                      {r.combination && (
+                        <span className="ml-1 opacity-70">· {r.combination.name}</span>
+                      )}
                     </span>
                     <span className="sr-only">{initials(r.guest?.name)}</span>
                   </button>

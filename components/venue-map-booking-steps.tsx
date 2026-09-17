@@ -13,9 +13,17 @@ import {
 } from "@/components/venue-map-canvas";
 import { publicVenueMapApi } from "@/lib/api/venue-map";
 import { useMapAssetUrl } from "@/lib/hooks/use-map-asset";
-import { formatMoney } from "@/lib/format";
+import {
+  formatGuestAssignedTables,
+  formatMoney,
+  guestCombinationNote,
+} from "@/lib/format";
 import { cn } from "@/lib/utils";
-import type { VenueMapSectionSummary, VenueMapTable } from "@/lib/types";
+import type {
+  VenueMapCombination,
+  VenueMapSectionSummary,
+  VenueMapTable,
+} from "@/lib/types";
 
 /**
  * A failed request and a genuinely empty venue used to render the same
@@ -166,6 +174,17 @@ export function StepSection({
 
 /* ── Step: pick a table within the section ────────────────────────────── */
 
+/**
+ * Group hotspots are keyed by group AND member: the same table can belong to
+ * more than one group, and an id of just the table would make two groups
+ * indistinguishable on click.
+ */
+const comboHotspotId = (combinationId: string, tableId: string) =>
+  `combo:${combinationId}:${tableId}`;
+
+const comboIdFromHotspot = (hotspotId: string): string | null =>
+  hotspotId.startsWith("combo:") ? (hotspotId.split(":")[1] ?? null) : null;
+
 export function StepTable({
   slug,
   sectionId,
@@ -173,7 +192,9 @@ export function StepTable({
   reservedAt,
   partySize,
   selectedTableId,
+  selectedCombinationId,
   onSelect,
+  onSelectCombination,
   onBack,
   onNext,
 }: {
@@ -183,7 +204,9 @@ export function StepTable({
   reservedAt: string;
   partySize: number;
   selectedTableId: string | null;
+  selectedCombinationId: string | null;
   onSelect: (table: VenueMapTable | null) => void;
+  onSelectCombination: (combination: VenueMapCombination | null) => void;
   onBack: () => void;
   onNext: () => void;
 }) {
@@ -205,6 +228,7 @@ export function StepTable({
   });
 
   const tables = query.data?.tables ?? [];
+  const combinations = useMemo(() => query.data?.combinations ?? [], [query.data]);
   const venueMap = overview.data?.map ?? null;
   const { url: mapUrl, failed: mapFailed } = useMapAssetUrl(venueMap?.url ?? null);
 
@@ -226,22 +250,71 @@ export function StepTable({
     [overview.data, sectionId],
   );
 
-  const hotspots: VenueMapHotspot[] = tables.map((t) => ({
-    id: t.id,
-    label: t.name,
-    sublabel: `seats ${t.min_capacity}–${t.max_capacity}`,
-    x: t.map_position.x,
-    y: t.map_position.y,
-    width: t.map_position.width,
-    height: t.map_position.height,
-    rotation: t.map_position.rotation,
-    shape: t.shape,
-    // "booked" maps onto the shared floor vocabulary's "busy".
-    state: t.state === "booked" ? "busy" : t.state === "unfit" ? "unfit" : "available",
-    disabled: t.state !== "available",
-  }));
+  const offeredGroups = useMemo(
+    () => combinations.filter((c) => c.state === "available"),
+    [combinations],
+  );
+
+  /**
+   * Members of a group that is on offer, where the table can't be taken alone.
+   * Drawing both would stack an unfit table under a bookable group on the same
+   * coordinates — two hotspots, one of them a lie.
+   */
+  const supersededTableIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const group of offeredGroups) {
+      for (const t of group.tables) ids.add(t.id);
+    }
+    return ids;
+  }, [offeredGroups]);
+
+  const hotspots: VenueMapHotspot[] = [
+    ...tables
+      .filter((t) => !(t.state !== "available" && supersededTableIds.has(t.id)))
+      .map((t) => ({
+        id: t.id,
+        label: t.name,
+        sublabel: `seats ${t.min_capacity}–${t.max_capacity}`,
+        x: t.map_position.x,
+        y: t.map_position.y,
+        width: t.map_position.width,
+        height: t.map_position.height,
+        rotation: t.map_position.rotation,
+        shape: t.shape,
+        // "booked" maps onto the shared floor vocabulary's "busy".
+        state: (t.state === "booked"
+          ? "busy"
+          : t.state === "unfit"
+            ? "unfit"
+            : "available") as VenueMapHotspot["state"],
+        disabled: t.state !== "available",
+      })),
+    // One hotspot per member, so a group reads on the map as the several tables
+    // it actually is. Selecting any of them selects the whole group.
+    ...offeredGroups.flatMap((c) =>
+      c.tables.map((t) => ({
+        id: comboHotspotId(c.id, t.id),
+        label: t.name,
+        sublabel: `together · seats up to ${c.max_capacity}`,
+        x: t.map_position.x,
+        y: t.map_position.y,
+        width: t.map_position.width,
+        height: t.map_position.height,
+        rotation: t.map_position.rotation,
+        shape: t.shape,
+        state: "available" as VenueMapHotspot["state"],
+      })),
+    ),
+  ];
 
   const selected = tables.find((t) => t.id === selectedTableId) ?? null;
+  const selectedGroup = combinations.find((c) => c.id === selectedCombinationId) ?? null;
+
+  // The canvas highlights every hotspot in the array, so a chosen group lights
+  // up all of its tables rather than one of them.
+  const canvasSelection = selectedGroup
+    ? selectedGroup.tables.map((t) => comboHotspotId(selectedGroup.id, t.id))
+    : selectedTableId;
 
   if (query.isPending) {
     return <Skeleton className="h-96 w-full" />;
@@ -256,6 +329,13 @@ export function StepTable({
       <h2 className="text-lg font-semibold">Choose your spot in {sectionName}</h2>
       <p className="mt-1 text-sm text-muted-foreground">
         Green is available; red is already booked for this time.
+        {offeredGroups.length > 0 && (
+          <>
+            {" "}
+            Your party needs more than one table, so tables that can be pushed together
+            are offered as a set.
+          </>
+        )}
       </p>
 
       <div className="mt-4">
@@ -264,8 +344,15 @@ export function StepTable({
           hotspots={hotspots}
           areas={areas}
           focusBounds={focusBounds}
-          selectedId={selectedTableId}
-          onSelect={(id) => onSelect(tables.find((t) => t.id === id) ?? null)}
+          selectedId={canvasSelection}
+          onSelect={(id) => {
+            const comboId = comboIdFromHotspot(id);
+            if (comboId) {
+              onSelectCombination(combinations.find((c) => c.id === comboId) ?? null);
+              return;
+            }
+            onSelect(tables.find((t) => t.id === id) ?? null);
+          }}
           loading={!!venueMap && !mapUrl && !mapFailed}
           emptyLabel={
             mapFailed
@@ -331,8 +418,57 @@ export function StepTable({
               </li>
             );
           })}
+
+          {/* Groups live in the same list as single tables: for a party that
+              fits no one table these are the ONLY bookable options, and a
+              separate section below the fold would read as unavailable. */}
+          {offeredGroups.map((c) => (
+            <li key={c.id}>
+              <button
+                type="button"
+                onClick={() => onSelectCombination(c)}
+                aria-pressed={c.id === selectedCombinationId}
+                className={cn(
+                  "flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm transition-colors",
+                  c.id === selectedCombinationId
+                    ? "border-foreground/30 bg-muted"
+                    : "border-border hover:bg-muted/50",
+                )}
+              >
+                <span>
+                  <span className="font-medium">
+                    {formatGuestAssignedTables(c.tables) ?? "Tables together"}
+                  </span>
+                  <span className="ml-2 text-xs text-muted-foreground">
+                    seats {c.min_capacity}–{c.max_capacity}
+                  </span>
+                </span>
+                <span className="text-right">
+                  {c.price_cents > 0 && (
+                    <span className="block text-xs font-medium">
+                      {formatMoney(c.price_cents, "IDR")}
+                    </span>
+                  )}
+                  <span className="text-[11px] text-emerald-600">Available</span>
+                </span>
+              </button>
+            </li>
+          ))}
         </ul>
       </div>
+
+      {/* A party that fits nothing at all is a dead end with no explanation —
+          the guest sees a greyed-out floor and no reason for it. */}
+      {hotspots.every((h) => h.disabled) && offeredGroups.length === 0 && (
+        <p className="mt-4 rounded-lg border border-dashed border-border px-4 py-3 text-sm text-muted-foreground">
+          Nothing in {sectionName} fits a party of {partySize} at this time. Try another
+          area, another time, or{" "}
+          <button type="button" className="underline underline-offset-2" onClick={onBack}>
+            go back
+          </button>
+          .
+        </p>
+      )}
 
       {selected && selected.price_cents > 0 && (
         <p className="mt-4 rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm">
@@ -341,11 +477,29 @@ export function StepTable({
         </p>
       )}
 
+      {selectedGroup && (
+        <p className="mt-4 rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm">
+          <span className="font-medium">
+            {formatGuestAssignedTables(selectedGroup.tables)}
+          </span>
+          {selectedGroup.price_cents > 0 && (
+            <> — {formatMoney(selectedGroup.price_cents, "IDR")}, paid now to confirm your booking.</>
+          )}
+          <span className="mt-1 block text-xs text-muted-foreground">
+            {guestCombinationNote(selectedGroup.tables.length, partySize)}
+          </span>
+        </p>
+      )}
+
       <div className="mt-6 flex items-center justify-between gap-3">
         <Button type="button" variant="outline" onClick={onBack}>
           <ArrowLeft className="h-4 w-4" /> Back
         </Button>
-        <Button type="button" disabled={!selectedTableId} onClick={onNext}>
+        <Button
+          type="button"
+          disabled={!selectedTableId && !selectedCombinationId}
+          onClick={onNext}
+        >
           Continue
         </Button>
       </div>

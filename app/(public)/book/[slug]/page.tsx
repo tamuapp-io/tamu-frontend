@@ -18,7 +18,7 @@ import { publicBookingApi } from "@/lib/api/public-booking";
 import { ApiError } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { cn } from "@/lib/utils";
-import { formatGuestAssignedTables, ordinal } from "@/lib/format";
+import { formatGuestAssignedTables, guestCombinationNote, ordinal } from "@/lib/format";
 import { PhoneInput } from "@/components/phone-input";
 import { StepSection, StepTable } from "@/components/venue-map-booking-steps";
 import { StepMenu } from "@/components/menu-booking-step";
@@ -42,6 +42,8 @@ interface BookingState {
   section_id: string | null;
   section_name: string | null;
   table_id: string | null;
+  /** Mutually exclusive with `table_id` — the server rejects both together. */
+  combination_id: string | null;
   /** Pre-ordered menu lines. Ids and quantities only — never prices. */
   menu_lines: MenuOrderLine[];
   guest: {
@@ -145,6 +147,7 @@ function PublicBookingFlow({
     section_id: null,
     section_name: null,
     table_id: null,
+    combination_id: null,
     menu_lines: [],
     guest: { name: "", email: "", phone: "", marketing_opt_in: false, birthday_month: null, birthday_day: null },
     occasion: "",
@@ -200,6 +203,7 @@ function PublicBookingFlow({
               section_id: section.id,
               section_name: section.name,
               table_id: null,
+              combination_id: null,
             }));
             setStep("table");
           }}
@@ -214,9 +218,21 @@ function PublicBookingFlow({
           reservedAt={state.slot.reserved_at_utc}
           partySize={state.party_size}
           selectedTableId={state.table_id}
-          onSelect={(table) => setState((s) => ({ ...s, table_id: table?.id ?? null }))}
+          selectedCombinationId={state.combination_id}
+          // A spot and a group are alternatives, so choosing either clears the
+          // other — sending both is a 422.
+          onSelect={(table) =>
+            setState((s) => ({ ...s, table_id: table?.id ?? null, combination_id: null }))
+          }
+          onSelectCombination={(combination) =>
+            setState((s) => ({
+              ...s,
+              combination_id: combination?.id ?? null,
+              table_id: null,
+            }))
+          }
           onBack={() => {
-            setState((s) => ({ ...s, table_id: null }));
+            setState((s) => ({ ...s, table_id: null, combination_id: null }));
             setStep("section");
           }}
           onNext={() => setStep(venueHasMenu ? "menu" : "details")}
@@ -977,6 +993,9 @@ function StepDetails({
           : { party_size: state.party_size }),
         // Ignored server-side unless the venue has the venue_map feature.
         table_id: state.table_id ?? undefined,
+        // Honoured only when the venue has table combinations switched on; the
+        // guard re-checks every member before anything is written.
+        combination_id: state.combination_id ?? undefined,
         // Ids and quantities only — the server prices the order from its own
         // catalogue, so a price sent from here would be ignored anyway.
         menu_items: state.menu_lines.length > 0 ? state.menu_lines : undefined,
@@ -1351,10 +1370,23 @@ function StepDone({
 
       {!isSpa && formatGuestAssignedTables(confirmation.assigned_tables) && (
         <div className="mx-auto mt-4 max-w-md rounded-xl border border-border bg-card px-6 py-4 text-left shadow-xs">
-          <span className="label-cap">Your table</span>
+          <span className="label-cap">
+            {(confirmation.assigned_tables?.length ?? 0) > 1 ? "Your tables" : "Your table"}
+          </span>
           <p className="mt-1.5 text-sm font-medium text-foreground">
             {formatGuestAssignedTables(confirmation.assigned_tables)}
           </p>
+          {guestCombinationNote(
+            confirmation.assigned_tables?.length,
+            confirmation.party_size,
+          ) && (
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              {guestCombinationNote(
+                confirmation.assigned_tables?.length,
+                confirmation.party_size,
+              )}
+            </p>
+          )}
           <p className="mt-2 text-xs text-muted-foreground">
             The venue may change this before you arrive — check your email or manage
             your booking if anything shifts.

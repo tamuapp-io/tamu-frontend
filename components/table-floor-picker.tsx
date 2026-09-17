@@ -23,7 +23,7 @@ import { useReservationsList } from "@/lib/hooks/use-reservations";
 import { useTablesList } from "@/lib/hooks/use-tables";
 import { useTenantTimezone } from "@/lib/hooks/use-tenant-timezone";
 import { instantFromApi, todayISOInTz } from "@/lib/format";
-import type { Table } from "@/lib/types";
+import type { Table, TableCombination } from "@/lib/types";
 
 const CANVAS_PAD = 48;
 
@@ -40,7 +40,11 @@ interface TableFloorPickerProps {
   reservedAt: string;
   /** Stay/turn duration in minutes — used to compute overlap with other reservations. */
   durationMins: number;
-  /** Party size. Tables with min/max capacity outside this range are marked `unfit`. */
+  /**
+   * Party size. In single mode a table outside this capacity range is `unfit`
+   * and unselectable; in multi mode capacity is judged on the assembled group,
+   * so small tables stay selectable as building blocks.
+   */
   partySize: number;
   /** Currently selected table id (controlled). `null`/`undefined` means "no selection". */
   value: string | null | undefined;
@@ -61,6 +65,24 @@ interface TableFloorPickerProps {
   dateOverride?: string;
   /** Restrict the floor plan to one section. `null`/`"all"`/undefined shows every table. */
   section?: string | null;
+
+  /**
+   * "single" (default) keeps the original one-table contract, so existing call
+   * sites are unaffected. "multi" lets staff pick several tables, which
+   * `matchAssignment()` then resolves into a saved group.
+   */
+  mode?: "single" | "multi";
+  /** Selected ids when mode === "multi" (controlled). */
+  selectedIds?: string[];
+  /** Receives the full selection when mode === "multi". */
+  onChangeMulti?: (tableIds: string[]) => void;
+  /**
+   * Every member of these groups renders with a group ring, so staff can see
+   * which tables belong together before clicking.
+   */
+  combinations?: TableCombination[];
+  /** The reservation's current tables — a group booking holds more than one. */
+  currentTableIds?: string[];
 }
 
 export function TableFloorPicker({
@@ -74,7 +96,47 @@ export function TableFloorPicker({
   currentTableId,
   dateOverride,
   section,
+  mode = "single",
+  selectedIds,
+  onChangeMulti,
+  combinations,
+  currentTableIds,
 }: TableFloorPickerProps) {
+  const isMulti = mode === "multi";
+
+  // One selection model for both modes, so everything below stays uniform.
+  const selected = useMemo(
+    () => new Set(isMulti ? (selectedIds ?? []) : value ? [value] : []),
+    [isMulti, selectedIds, value],
+  );
+
+  const current = useMemo(
+    () => new Set([...(currentTableIds ?? []), ...(currentTableId ? [currentTableId] : [])]),
+    [currentTableIds, currentTableId],
+  );
+
+  // Members of any group, for the "these belong together" ring.
+  const grouped = useMemo(() => {
+    const ids = new Set<string>();
+    for (const c of combinations ?? []) {
+      if (c.is_bookable) for (const id of c.table_ids) ids.add(id);
+    }
+    return ids;
+  }, [combinations]);
+
+  const toggle = (tableId: string) => {
+    if (!isMulti) {
+      onChange(selected.has(tableId) ? null : tableId);
+      return;
+    }
+    const next = new Set(selected);
+    if (next.has(tableId)) {
+      next.delete(tableId);
+    } else {
+      next.add(tableId);
+    }
+    onChangeMulti?.([...next]);
+  };
   const tz = useTenantTimezone();
   const targetStart = useMemo(() => instantFromApi(reservedAt), [reservedAt]);
   const targetEnd = useMemo(
@@ -145,24 +207,37 @@ export function TableFloorPicker({
   // Auto-clear the selection if the chosen table becomes ineligible (party
   // size grew, slot moved, etc.) — keeps the form state consistent.
   useEffect(() => {
-    if (!value) return;
-    const picked = tables.find((t) => t.id === value);
-    if (!picked) return;
-    const state = pickerState({
-      table: picked,
-      partySize,
-      busy: busyTableIds.has(picked.id),
-      selectedId: value,
-      currentId: currentTableId,
+    if (selected.size === 0) return;
+
+    // Ineligible picks are PRUNED rather than the whole selection cleared —
+    // losing one table of a three-table group because the party grew shouldn't
+    // silently discard the other two.
+    const stillOk = [...selected].filter((id) => {
+      const picked = tables.find((t) => t.id === id);
+      if (!picked) return true; // not loaded yet; don't touch it
+      const state = pickerState({
+        table: picked,
+        partySize,
+        busy: busyTableIds.has(picked.id),
+        selected,
+        current,
+        isMulti,
+      });
+      return state === "selected" || state === "available";
     });
-    if (state !== "selected" && state !== "available") {
-      onChange(null);
+
+    if (stillOk.length === selected.size) return;
+
+    if (isMulti) {
+      onChangeMulti?.(stillOk);
+    } else {
+      onChange(stillOk[0] ?? null);
     }
     // We intentionally omit `onChange` from deps — it's stable from the
     // parent's perspective, and including it can cause loops when the
     // parent recreates the handler each render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value, partySize, busyTableIds, tables, currentTableId]);
+  }, [selected, partySize, busyTableIds, tables, current, isMulti]);
 
   const dims = useMemo(() => {
     if (layoutCells.length === 0) return { width: 400, height: 280 };
@@ -218,8 +293,9 @@ export function TableFloorPicker({
               table: cell.table,
               partySize,
               busy,
-              selectedId: value,
-              currentId: currentTableId,
+              selected,
+              current,
+              isMulti,
             });
             const interactive = state === "available" || state === "selected";
             return (
@@ -229,10 +305,11 @@ export function TableFloorPicker({
                 disabled={!interactive}
                 onClick={() => {
                   if (!interactive) return;
-                  onChange(state === "selected" ? null : cell.table.id);
+                  toggle(cell.table.id);
                 }}
                 aria-label={`${cell.table.name} · ${describeState(state, cell.table, partySize)}`}
                 aria-pressed={state === "selected"}
+                data-grouped={grouped.has(cell.table.id) ? "" : undefined}
                 title={describeState(state, cell.table, partySize)}
                 className={cn(
                   "absolute flex select-none flex-col items-center justify-center gap-0.5 border-2 px-1 text-center text-foreground transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
@@ -271,23 +348,33 @@ function pickerState({
   table,
   partySize,
   busy,
-  selectedId,
-  currentId,
+  selected,
+  current,
+  isMulti = false,
 }: {
   table: Table;
   partySize: number;
   busy: boolean;
-  selectedId: string | null | undefined;
-  currentId?: string | null;
+  selected: Set<string>;
+  current: Set<string>;
+  /** Multi-select is building a GROUP, so capacity is judged on the whole set. */
+  isMulti?: boolean;
 }): TableFloorPickerState {
-  if (selectedId === table.id) return "selected";
+  if (selected.has(table.id)) return "selected";
   // Current assignment beats other classifications so staff always see
   // where the reservation is right now, even if that table technically
   // shows up as "busy" with this same reservation.
-  if (currentId && currentId === table.id) return "current";
+  if (current.has(table.id)) return "current";
   if (table.status !== "active") return "inactive";
   if (busy) return "busy";
-  if (partySize < table.min_capacity || partySize > table.max_capacity) return "unfit";
+  // Per-table capacity is the wrong question when combining. A party of 6 at a
+  // venue of 4-tops made EVERY table `unfit`, which disabled every button —
+  // so the one selection that could seat them could not be made at all. The
+  // group's own min/max is checked on the assembled selection instead (see
+  // matchAssignment), and again server-side by CombinationSelectionGuard.
+  if (!isMulti && (partySize < table.min_capacity || partySize > table.max_capacity)) {
+    return "unfit";
+  }
   return "available";
 }
 
