@@ -5,7 +5,7 @@ import { use } from "react";
 import { Calendar, Check, ChevronLeft, ClipboardList, Clock, Minus, Plus, Users } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { TamuLogo } from "@/components/tamu-brand";
 import { VenueMark } from "@/components/venue-mark";
 import { Button } from "@/components/ui/button";
@@ -137,12 +137,22 @@ function PublicBookingFlow({
   // off — never gets a Menu step, empty or otherwise.
   const venueHasMenu = !venueIsSpa && venue.menu?.visible === true;
 
+  // `?date=YYYY-MM-DD` lands a guest here from an event page with that night
+  // already chosen. Read once for the initial state rather than watched, so a
+  // guest who then picks a different date isn't dragged back to it. Validated
+  // against the shape and floored at today, since it arrives from the URL.
+  const requestedDate = useSearchParams().get("date");
+  const initialDate =
+    requestedDate && /^\d{4}-\d{2}-\d{2}$/.test(requestedDate) && requestedDate >= todayISO()
+      ? requestedDate
+      : todayISO();
+
   const [step, setStep] = useState<Step>(venueIsSpa ? "service" : "date");
   const [confirmation, setConfirmation] = useState<PublicReservation | null>(null);
   const [state, setState] = useState<BookingState>({
     service_id: null,
     therapist_id: null,
-    date: todayISO(),
+    date: initialDate,
     party_size: 2,
     slot: null,
     section_id: null,
