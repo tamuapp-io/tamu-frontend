@@ -339,6 +339,65 @@ export interface PublicTenantWaitlistProfile {
   enabled: boolean;
 }
 
+/** One table attached to an event, with the price it costs while the event runs. */
+export interface EventTableRow {
+  id: string;
+  table_id: string;
+  /** TRUE cents. null = attached at the table's normal price, NOT free. */
+  price_cents: number | null;
+  table: {
+    id: string;
+    name: string;
+    section: string | null;
+    min_capacity: number;
+    max_capacity: number;
+    status: string;
+    /** The table's own standing price, so the editor shows what's being replaced. */
+    price_cents: number | null;
+  } | null;
+}
+
+export interface EventTablesPayload {
+  tables: EventTableRow[];
+  /**
+   * False means a price saved here can never be charged — guests only choose a
+   * table through the venue map. The write is refused server-side too.
+   */
+  venue_map_enabled: boolean;
+  /**
+   * False means pricing a previously-free table makes it UNBOOKABLE: the
+   * deposit service refuses to hand out a priced table with no way to pay.
+   */
+  gateway_ready: boolean;
+}
+
+export interface EventTablePayloadRow {
+  table_id: string;
+  price_cents?: number | null;
+}
+
+/**
+ * A published event, carried on the booking profile so the date step can flag
+ * one without a request.
+ */
+export interface PublicUpcomingEvent {
+  id: string;
+  slug: string;
+  name: string;
+  /** ISO 8601 UTC. */
+  starts_at: string;
+  ends_at: string | null;
+  /** From the event page builder's theme; events have no image column. */
+  cover_image_url?: string | null;
+  /**
+   * The venue-local `YYYY-MM-DD` dates this event spans, expanded server-side.
+   * Compare with the date input's value directly — do NOT re-derive these from
+   * `starts_at` in the browser, which means guessing a timezone and showing a
+   * 31 Dec 23:00 WIB event on the 30th.
+   */
+  local_dates: string[];
+}
+
 export interface PublicTenant {
   name: string;
   slug: string;
@@ -362,6 +421,8 @@ export interface PublicTenant {
   logo_url?: string | null;
   cover_url?: string | null;
   brand_color?: string | null;
+  /** Bounded list (90 days, 20 max). Absent on older backends. */
+  upcoming_events?: PublicUpcomingEvent[];
 }
 
 export interface PublicSpaCatalog {
@@ -518,6 +579,27 @@ export interface OperatingHourRow {
   turn_buffer: number;
   max_covers: number | null;
   is_closed: boolean;
+  /** null = the venue-wide schedule. Absent on older backends. */
+  floor_section_id?: string | null;
+}
+
+/** One floor section's schedule, as the Hours tab's selector sees it. */
+export interface OperatingHourSectionScope {
+  id: string;
+  name: string;
+  is_active: boolean;
+  /**
+   * False means this area simply follows the venue. Turning it on must SEED
+   * from the venue week — a section that defines any period is closed on every
+   * day it omits, so starting from blank would shut the area all week.
+   */
+  has_custom_hours: boolean;
+  periods: OperatingHourRow[];
+}
+
+export interface OperatingHourScopes {
+  venue: OperatingHourRow[];
+  sections: OperatingHourSectionScope[];
 }
 
 export interface BookingRuleRow {

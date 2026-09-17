@@ -12,6 +12,8 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ApiError } from "@/lib/api/client";
+import { EventTablesTab } from "@/components/event-tables-tab";
+import { useHasFeature } from "@/lib/hooks/use-features";
 import { useAuthStore } from "@/lib/store/auth-store";
 import {
   useCreateReferral,
@@ -56,6 +58,9 @@ export default function EventEditorPage({
   const event = useEvent(id);
   const lifecycle = useEventLifecycle(id);
   const tenant = useAuthStore((s) => s.tenant);
+  // Per-table pricing only reaches a guest through the venue map, so without it
+  // the tab would only be able to store numbers nothing could charge.
+  const hasVenueMap = useHasFeature("venue_map");
 
   if (event.isPending) {
     return (
@@ -144,6 +149,8 @@ export default function EventEditorPage({
           <TabsList>
             <TabsTrigger value="details">Details</TabsTrigger>
             <TabsTrigger value="tickets">Ticket types</TabsTrigger>
+            {/* Advisory only — the API refuses the write without the feature too. */}
+            {hasVenueMap && <TabsTrigger value="tables">Tables</TabsTrigger>}
             <TabsTrigger value="buyers">Buyers</TabsTrigger>
             <TabsTrigger value="page">Page</TabsTrigger>
             <TabsTrigger value="referrals">Referrals</TabsTrigger>
@@ -155,6 +162,11 @@ export default function EventEditorPage({
           <TabsContent value="tickets">
             <TicketTypesTab event={data} />
           </TabsContent>
+          {hasVenueMap && (
+            <TabsContent value="tables">
+              <EventTablesTab eventId={id} eventHasEndTime={!!data.ends_at} />
+            </TabsContent>
+          )}
           <TabsContent value="buyers">
             <BuyersTab eventId={id} />
           </TabsContent>

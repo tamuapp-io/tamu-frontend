@@ -6,6 +6,9 @@ import type {
   EventReferral,
   EventReport,
   EventReportSummary,
+  EventTablePayloadRow,
+  EventTableRow,
+  EventTablesPayload,
   ItemEnvelope,
   ListEnvelope,
   Ticket,
@@ -52,6 +55,18 @@ export const eventsApi = {
   updateTicketType: (id: string, payload: Partial<TicketTypePayload>) =>
     api.patch<ItemEnvelope<TicketType>>(`ticket-types/${id}`, payload),
   deleteTicketType: (id: string) => api.delete<void>(`ticket-types/${id}`),
+
+  /**
+   * Tables this event takes over. The response also reports whether a price
+   * saved here could actually be collected — see EventTablesPayload.
+   */
+  listTables: (eventId: string) =>
+    api.get<ItemEnvelope<EventTablesPayload>>(`events/${eventId}/tables`),
+  /** Replaces the whole list; an empty array detaches everything. */
+  syncTables: (eventId: string, tables: EventTablePayloadRow[]) =>
+    api.put<ItemEnvelope<{ tables: EventTableRow[] }>>(`events/${eventId}/tables`, {
+      tables,
+    }),
 
   listReferrals: (eventId: string) =>
     api.get<ListEnvelope<EventReferral>>(`events/${eventId}/referrals`),

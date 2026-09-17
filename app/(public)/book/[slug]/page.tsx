@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { formatGuestAssignedTables, guestCombinationNote, ordinal } from "@/lib/format";
 import { PhoneInput } from "@/components/phone-input";
 import { StepSection, StepTable } from "@/components/venue-map-booking-steps";
+import { PublicEventDateBanner } from "@/components/public-event-date-banner";
 import { StepMenu } from "@/components/menu-booking-step";
 import type {
   PublicAvailabilitySlot,
@@ -652,6 +653,15 @@ function StepDate({
           </div>
         )}
       </div>
+
+      {/* Renders nothing on an ordinary date. Reads the events already on the
+          profile payload, so choosing a date flags one with no request. */}
+      <PublicEventDateBanner
+        slug={tenant.slug}
+        events={tenant.upcoming_events ?? []}
+        date={state.date}
+        timeZone={tenant.timezone}
+      />
 
       <div className={cn("mt-6 flex", onBack ? "justify-between" : "justify-end")}>
         {onBack ? (
