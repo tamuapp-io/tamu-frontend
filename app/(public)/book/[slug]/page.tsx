@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { use } from "react";
-import { Calendar, Check, ChevronLeft, ClipboardList, Clock, Minus, Plus, Users } from "lucide-react";
+import { Calendar, Check, ChevronLeft, ClipboardList, Clock, Minus, Plus, Sparkles, Users } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -18,7 +18,12 @@ import { publicBookingApi } from "@/lib/api/public-booking";
 import { ApiError } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { cn } from "@/lib/utils";
-import { formatGuestAssignedTables, guestCombinationNote, ordinal } from "@/lib/format";
+import {
+  eventCoveringInstant,
+  formatGuestAssignedTables,
+  guestCombinationNote,
+  ordinal,
+} from "@/lib/format";
 import { PhoneInput } from "@/components/phone-input";
 import { StepSection, StepTable } from "@/components/venue-map-booking-steps";
 import { PublicEventDateBanner } from "@/components/public-event-date-banner";
@@ -873,7 +878,12 @@ function StepSlot({
     enabled: isSpa ? !!state.service_id : true,
   });
 
-  const slots = availabilityQuery.data?.slots ?? [];
+  // Memoised so the two derivations below have a stable dependency — `?? []`
+  // built a fresh array on every render and invalidated both each time.
+  const slots = useMemo(
+    () => availabilityQuery.data?.slots ?? [],
+    [availabilityQuery.data],
+  );
   const grouped = useMemo(() => {
     const out = new Map<string, PublicAvailabilitySlot[]>();
     for (const slot of slots) {
@@ -883,6 +893,20 @@ function StepSlot({
     }
     return out;
   }, [slots]);
+
+  // Only events that actually cover an offered slot — an event later that night
+  // with no bookable time inside it shouldn't announce itself here.
+  const slotEventNames = useMemo(() => {
+    const events = tenant.upcoming_events ?? [];
+    const names = new Set<string>();
+
+    for (const slot of slots) {
+      const hit = eventCoveringInstant(events, slot.reserved_at_utc);
+      if (hit) names.add(hit.name);
+    }
+
+    return [...names];
+  }, [slots, tenant.upcoming_events]);
 
   return (
     <Card className="p-6">
@@ -936,6 +960,17 @@ function StepSlot({
         {availabilityQuery.isSuccess && slots.length === 0 && !isSpa && tenant.waitlist?.enabled && (
           <JoinWaitlistPanel slug={slug} partySize={state.party_size} tenant={tenant} />
         )}
+        {/* Named, not just highlighted. A marker the guest can't decode is
+            worse than none — they're choosing a time, and "these ones are the
+            gala" is the whole reason it matters. */}
+        {availabilityQuery.isSuccess && slotEventNames.length > 0 && (
+          <p className="mb-4 flex flex-wrap items-center gap-1.5 rounded-lg border border-accent bg-accent/15 px-3 py-2 text-sm">
+            <Sparkles className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            <span>
+              {`Times marked with a spark are during ${slotEventNames.join(" and ")}.`}
+            </span>
+          </p>
+        )}
         {availabilityQuery.isSuccess && slots.length > 0 && (
           <div className="space-y-5">
             {Array.from(grouped.entries()).map(([period, periodSlots]) => (
@@ -945,19 +980,40 @@ function StepSlot({
                   {periodSlots.map((slot) => {
                     const selected =
                       state.slot?.reserved_at_utc === slot.reserved_at_utc;
+                    // Marked per slot, not per day: an event runs for part of
+                    // the evening, and a guest picking 18:00 on gala night is
+                    // NOT booking the gala.
+                    const slotEvent = eventCoveringInstant(
+                      tenant.upcoming_events ?? [],
+                      slot.reserved_at_utc,
+                    );
                     return (
                       <button
                         key={slot.reserved_at_utc}
                         type="button"
                         onClick={() => setState((s) => ({ ...s, slot }))}
+                        title={slotEvent ? `During ${slotEvent.name}` : undefined}
                         className={cn(
-                          "h-10 rounded-md border text-sm font-medium transition-colors",
+                          "relative flex h-10 items-center justify-center rounded-md border text-sm font-medium transition-colors",
                           selected
                             ? "border-foreground bg-foreground text-primary-foreground"
-                            : "border-border bg-background hover:bg-muted",
+                            : slotEvent
+                              ? "border-accent bg-accent/15 hover:bg-accent/25"
+                              : "border-border bg-background hover:bg-muted",
                         )}
                       >
                         {slot.time}
+                        {slotEvent && (
+                          <>
+                            <Sparkles
+                              className="ml-1 h-3 w-3 shrink-0"
+                              aria-hidden
+                            />
+                            {/* The dot is decorative; this is what a screen
+                                reader and a colour-blind guest actually get. */}
+                            <span className="sr-only">{` — during ${slotEvent.name}`}</span>
+                          </>
+                        )}
                       </button>
                     );
                   })}
