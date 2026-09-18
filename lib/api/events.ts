@@ -10,6 +10,7 @@ import type {
   EventTableRow,
   EventTablesPayload,
   ItemEnvelope,
+  Reservation,
   ListEnvelope,
   Ticket,
   TicketOrder,
@@ -62,6 +63,9 @@ export const eventsApi = {
    */
   listTables: (eventId: string) =>
     api.get<ItemEnvelope<EventTablesPayload>>(`events/${eventId}/tables`),
+  /** Guests who booked a table for this event. */
+  listTableGuests: (eventId: string) =>
+    api.get<ListEnvelope<Reservation>>(`events/${eventId}/table-guests`),
   /** Replaces the whole list; an empty array detaches everything. */
   syncTables: (eventId: string, tables: EventTablePayloadRow[]) =>
     api.put<ItemEnvelope<{ tables: EventTableRow[] }>>(`events/${eventId}/tables`, {

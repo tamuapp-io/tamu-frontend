@@ -183,3 +183,12 @@ export function useSyncEventTables(eventId: string) {
     },
   });
 }
+
+/** Guests who booked a table for this event, rather than a ticket. */
+export function useEventTableGuests(eventId: string) {
+  return useQuery({
+    queryKey: [...eventsKeys.tables(eventId), "guests"],
+    queryFn: async () => (await eventsApi.listTableGuests(eventId)).data,
+    enabled: !!eventId,
+  });
+}

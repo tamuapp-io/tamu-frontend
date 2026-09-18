@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ChartLine, ExternalLink, Mail, Phone, Plus, Search, Trash2, Upload } from "lucide-react";
 import { eventsApi } from "@/lib/api/events";
 import { AppTopbar } from "@/components/app-topbar";
+import { StatusPill } from "@/components/status-pill";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,12 +20,14 @@ import {
   useCreateReferral,
   useEvent,
   useEventBuyers,
+  useEventTableGuests,
   useEventLifecycle,
   useEventReferrals,
   useTicketTypeMutations,
   useUpdateEvent,
 } from "@/lib/hooks/use-events";
-import { formatDate, formatMoney } from "@/lib/format";
+import { formatDate, formatMoney, formatTimeInTz } from "@/lib/format";
+import { useTenantTimezone } from "@/lib/hooks/use-tenant-timezone";
 import type {
   EventModel,
   EventPageBlock,
@@ -195,6 +198,10 @@ function DetailsTab({ event }: { event: EventModel }) {
   const [endsAt, setEndsAt] = useState(isoToLocalInput(event.ends_at));
   const [scanStartsAt, setScanStartsAt] = useState(isoToLocalInput(event.scan_starts_at ?? null));
   const [scanEndsAt, setScanEndsAt] = useState(isoToLocalInput(event.scan_ends_at ?? null));
+  // The SAME field the Page tab's theme edits. Kept as one image rather than a
+  // second "booking banner": two uploads would need a fallback rule and would
+  // drift the moment someone changed one of them.
+  const [image, setImage] = useState(event.page_config?.theme?.cover_image_url ?? "");
   const [saved, setSaved] = useState(false);
 
   async function save() {
@@ -207,6 +214,15 @@ function DetailsTab({ event }: { event: EventModel }) {
       ends_at: endsAt ? new Date(endsAt).toISOString() : null,
       scan_starts_at: scanStartsAt ? new Date(scanStartsAt).toISOString() : null,
       scan_ends_at: scanEndsAt ? new Date(scanEndsAt).toISOString() : null,
+      // Merged, never replaced: page_config also carries the theme colour and
+      // every page-builder block, and sending only the image would erase them.
+      page_config: {
+        ...(event.page_config ?? {}),
+        theme: {
+          ...(event.page_config?.theme ?? {}),
+          cover_image_url: image.trim() || undefined,
+        },
+      },
     });
     setSaved(true);
   }
@@ -240,6 +256,15 @@ function DetailsTab({ event }: { event: EventModel }) {
       <div className="space-y-1.5">
         <Label htmlFor="d-venue">Venue</Label>
         <Input id="d-venue" value={venue} onChange={(e) => setVenue(e.target.value)} />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label>Event image</Label>
+        <p className="text-xs text-muted-foreground">
+          Shown at the top of the event page, and on the booking page when a guest
+          picks this date. Same image as the cover under Page &rarr; Theme.
+        </p>
+        <ImageUploadField value={image} folder="events/covers" onChange={setImage} />
       </div>
 
       <div className="rounded-lg border border-border bg-muted/30 p-4">
@@ -603,7 +628,84 @@ function BuyersTab({ eventId }: { eventId: string }) {
           </table>
         </div>
       )}
+
+      <EventTableGuests eventId={eventId} />
     </div>
+  );
+}
+
+/**
+ * Guests who booked a table for this event rather than a ticket.
+ *
+ * Its own table, not merged into the buyers list above: a table booking is a
+ * different product with no order, no ticket type and no purchase total, and
+ * forcing it into those columns would mean six empty cells per row.
+ */
+function EventTableGuests({ eventId }: { eventId: string }) {
+  const guests = useEventTableGuests(eventId);
+  const tz = useTenantTimezone() || "UTC";
+  const rows = guests.data ?? [];
+
+  if (guests.isPending || rows.length === 0) {
+    return null;
+  }
+
+  return (
+    <section>
+      <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        Table guests ({rows.length})
+      </h3>
+      <p className="mt-1 text-xs text-muted-foreground">
+        Booked a table for this event. They check in at the door with the pass on their
+        booking page.
+      </p>
+
+      <div className="mt-2 overflow-x-auto rounded-xl border border-border">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
+              <th className="px-4 py-2.5 font-medium">Guest</th>
+              <th className="px-4 py-2.5 font-medium">Table</th>
+              <th className="px-4 py-2.5 font-medium tabular-nums">Covers</th>
+              <th className="px-4 py-2.5 font-medium">Time</th>
+              <th className="px-4 py-2.5 font-medium">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.id} className="border-b border-border/60 last:border-0">
+                <td className="px-4 py-3">
+                  <p className="font-medium">{r.guest?.name ?? "Guest"}</p>
+                  {r.guest?.email && (
+                    <a
+                      href={`mailto:${r.guest.email}`}
+                      className="mt-0.5 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                    >
+                      <Mail className="h-3 w-3" /> {r.guest.email}
+                    </a>
+                  )}
+                </td>
+                <td className="px-4 py-3">
+                  {(r.tables?.length ? r.tables.map((t) => t.name) : [r.table?.name])
+                    .filter(Boolean)
+                    .join(" + ") || "—"}
+                </td>
+                <td className="px-4 py-3 tabular-nums">{r.party_size}</td>
+                {/* Venue time, not the browser's. Door staff read this against
+                    the clock on the wall, and an owner checking from another
+                    timezone must see the same number they do. */}
+                <td className="px-4 py-3 tabular-nums">
+                  {formatTimeInTz(r.reserved_at, tz)}
+                </td>
+                <td className="px-4 py-3">
+                  <StatusPill status={r.status} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }
 
@@ -810,6 +912,10 @@ function PageBuilderTab({ event }: { event: EventModel }) {
             </div>
             <div className="space-y-1.5">
               <Label>Cover image</Label>
+              <p className="text-xs text-muted-foreground">
+                The same image as &ldquo;Event image&rdquo; on the Details tab. It also
+                appears on the booking page when a guest picks this date.
+              </p>
               <ImageUploadField
                 value={config.theme?.cover_image_url ?? ""}
                 folder="events/covers"
