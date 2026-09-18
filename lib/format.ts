@@ -295,3 +295,36 @@ export function guestCombinationNote(
 
   return `${party} seated across ${tableCount === 2 ? "two" : tableCount} tables placed together.`;
 }
+
+/**
+ * The event covering an instant, if any.
+ *
+ * Both sides are UTC instants — the slot's `reserved_at_utc` and the event's
+ * `starts_at`/`ends_at` — so this is a plain comparison with no timezone
+ * reasoning. That is why slot marking lives here and not next to `local_dates`,
+ * which exists for the opposite case: matching a naive calendar date.
+ *
+ * Half-open, matching the server's pricing window: an event ending at 23:00
+ * does not claim the 23:00 sitting.
+ */
+export function eventCoveringInstant<T extends { starts_at: string; ends_at: string | null }>(
+  events: T[],
+  instantIso: string,
+  /** Fallback span when an event has no end, mirroring the server's default. */
+  openEndedHours = 6,
+): T | null {
+  const at = new Date(instantIso).getTime();
+
+  if (Number.isNaN(at)) return null;
+
+  return (
+    events.find((e) => {
+      const start = new Date(e.starts_at).getTime();
+      const end = e.ends_at
+        ? new Date(e.ends_at).getTime()
+        : start + openEndedHours * 3600_000;
+
+      return at >= start && at < end;
+    }) ?? null
+  );
+}
