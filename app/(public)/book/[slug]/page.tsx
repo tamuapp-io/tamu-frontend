@@ -22,6 +22,7 @@ import { formatGuestAssignedTables, guestCombinationNote, ordinal } from "@/lib/
 import { PhoneInput } from "@/components/phone-input";
 import { StepSection, StepTable } from "@/components/venue-map-booking-steps";
 import { PublicEventDateBanner } from "@/components/public-event-date-banner";
+import { EventDoorPass } from "@/components/event-door-pass";
 import { StepMenu } from "@/components/menu-booking-step";
 import type {
   PublicAvailabilitySlot,
@@ -1411,6 +1412,16 @@ function StepDone({
             The venue may change this before you arrive — check your email or manage
             your booking if anything shifts.
           </p>
+        </div>
+      )}
+
+      {confirmation.event && (
+        <div className="mx-auto max-w-md text-left">
+          <EventDoorPass
+            event={confirmation.event}
+            timeZone={tenant?.timezone ?? "UTC"}
+            seated={confirmation.status === "seated"}
+          />
         </div>
       )}
 

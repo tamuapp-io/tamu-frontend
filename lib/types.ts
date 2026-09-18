@@ -456,6 +456,19 @@ export interface ReservationPayment {
   expires_at?: string | null;
 }
 
+/** The event a table was booked for, plus the guest's door pass. */
+export interface PublicReservationEvent {
+  name: string;
+  slug: string;
+  starts_at: string | null;
+  ends_at: string | null;
+  /**
+   * Signed admission token for the QR. NOT the confirmation code — that's a
+   * booking reference printed in emails and would be a weak credential.
+   */
+  door_code: string;
+}
+
 export interface PublicReservation {
   confirmation_code: string;
   status: ReservationStatus;
@@ -474,6 +487,8 @@ export interface PublicReservation {
   cancelled_at?: string | null;
   /** Assigned table(s): name + section for the guest (no internal ids). */
   assigned_tables?: { name: string; section?: string | null }[];
+  /** Present only when this booking was taken for an event. */
+  event?: PublicReservationEvent | null;
   /** Spa/wellness appointment details. */
   service?: SpaAppointmentService | null;
   therapist?: SpaAppointmentTherapist | null;

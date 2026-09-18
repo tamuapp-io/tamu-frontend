@@ -20,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { StatusPill } from "@/components/status-pill";
 import { PublicVenueShell } from "@/components/public-venue-shell";
+import { EventDoorPass } from "@/components/event-door-pass";
 import { publicBookingApi } from "@/lib/api/public-booking";
 import { ApiError } from "@/lib/api/client";
 import { toast } from "@/components/ui/toaster";
@@ -184,6 +185,16 @@ export default function ManageBookingPage({
             </>
           )}
         </dl>
+
+        {/* The pass a guest comes back for. Hidden once the booking is off —
+            a cancelled or no-show booking must not still scan at the door. */}
+        {r.event && !["cancelled", "no_show"].includes(r.status) && (
+          <EventDoorPass
+            event={r.event}
+            timeZone={r.restaurant_timezone ?? "UTC"}
+            seated={r.status === "seated" || r.status === "completed"}
+          />
+        )}
 
         {r.status === "cancelled" && (
           <p className="mt-6 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
