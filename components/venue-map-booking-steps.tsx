@@ -106,7 +106,7 @@ export function StepSection({
   // Fetched rather than <img src>'d so a tunnelled dev backend (ngrok) still
   // serves the bytes instead of its browser-warning page. Cached process-wide,
   // so the spot step reuses this exact blob and the map never blinks.
-  const { url: mapUrl, failed: mapFailed } = useMapAssetUrl(venueMap?.url ?? null);
+  const { url: mapUrl, failed: mapFailed } = useMapAssetUrl(venueMap?.url ?? null, venueMap?.direct_url);
 
   // Only outlined sections can be drawn; the card grid below covers the rest.
   const areas: VenueMapArea[] = useMemo(
@@ -269,7 +269,7 @@ export function StepTable({
   const tables = query.data?.tables ?? [];
   const combinations = useMemo(() => query.data?.combinations ?? [], [query.data]);
   const venueMap = overview.data?.map ?? null;
-  const { url: mapUrl, failed: mapFailed } = useMapAssetUrl(venueMap?.url ?? null);
+  const { url: mapUrl, failed: mapFailed } = useMapAssetUrl(venueMap?.url ?? null, venueMap?.direct_url);
 
   const focusBounds = query.data?.section?.bounds ?? null;
 

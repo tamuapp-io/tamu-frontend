@@ -27,7 +27,7 @@ function AtlasBackdrop({ slug, venueName }: { slug: string; venueName: string })
 
   const sections = useMemo(() => query.data?.sections ?? [], [query.data]);
   const venueMap = query.data?.map ?? null;
-  const { url: mapUrl } = useMapAssetUrl(venueMap?.url ?? null);
+  const { url: mapUrl } = useMapAssetUrl(venueMap?.url ?? null, venueMap?.direct_url);
 
   const areas: VenueMapArea[] = useMemo(
     () =>

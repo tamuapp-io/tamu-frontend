@@ -185,7 +185,8 @@ export function VenueMapEditor() {
   // and the blob cache, the browser cache and the CDN would all keep serving
   // the previous artwork. Keying the URL to the content invalidates all three.
   const { url: mapUrl, failed: mapFailed } = useMapAssetUrl(
-    venueMap ? `venue-map/assets/${venueMap.id}?v=${venueMap.checksum}` : null,
+    venueMap ? `venue-map/assets/?v=` : null,
+    venueMap?.direct_url,
   );
 
   // Saving an outline re-derives its bounding box server-side, so the editor

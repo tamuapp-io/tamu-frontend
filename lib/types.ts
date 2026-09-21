@@ -1270,7 +1270,15 @@ import type { Bounds, Point } from "@/lib/geometry";
 
 /** The uploaded artwork (SVG or PNG) and its intrinsic coordinate space. */
 export interface VenueMapAssetRef {
+  /** The proxied asset route. Always present; the fallback path. */
   url: string;
+  /**
+   * A public CDN URL for the artwork, when it is safe to load directly —
+   * a raster image on a public disk. Null for SVG, which must keep the
+   * locked-down CSP the proxy pins on it, and for private disks.
+   * Absent on older backends.
+   */
+  direct_url?: string | null;
   width: number;
   height: number;
   view_box: string;
@@ -1366,6 +1374,12 @@ export interface VenueMapStaffAsset {
   checksum: string;
   /** "image/svg+xml" | "image/png" — units are viewBox units or pixels. */
   mime: string;
+  /**
+   * A public CDN URL for the artwork when it is safe to load directly — a
+   * raster image on a public disk. Null for SVG, which keeps the locked-down
+   * CSP the asset route pins on it. Absent on older backends.
+   */
+  direct_url?: string | null;
   width: number;
   height: number;
   view_box: string;
