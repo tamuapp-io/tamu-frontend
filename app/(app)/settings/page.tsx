@@ -25,6 +25,7 @@ import { StaffBrowserNotificationsSettings } from "@/components/staff-browser-no
 import { StaffNotificationSoundsSettings } from "@/components/staff-notification-sounds-settings";
 import { PaymentGatewaysCard } from "@/components/payment-gateways-card";
 import { BookingDepositCard } from "@/components/booking-deposit-card";
+import { BookingThemeCard } from "@/components/booking-theme-card";
 import { VenueLogoField } from "@/components/venue-logo-field";
 import {
   OperatingHoursEditor,
@@ -766,6 +767,7 @@ export default function SettingsPage() {
             </TabsContent>
 
             <TabsContent value="booking" className="mt-6 space-y-6 focus-visible:outline-none">
+            <BookingThemeCard slug={settings.data?.restaurant.slug} />
             <Card className="overflow-hidden shadow-xs">
               <div className="border-b border-border bg-muted/30 px-6 py-4">
                 <h2 className="text-sm font-semibold">Booking experience</h2>

@@ -1,0 +1,174 @@
+/*
+ * Design tokens for the guest-facing booking page themes.
+ *
+ * Every theme block defines the same set of `--bk-*` custom properties; the
+ * shells and the shared step components reference only those, never a theme's
+ * hex directly. That is what lets a new theme be a block in this file plus a
+ * shell, with no edits inside the steps.
+ *
+ * Scoped to `[data-booking-theme]`, which the booking page sets on its own
+ * wrapper — these never leak into the staff app, which keeps using the shadcn
+ * tokens in globals.css.
+ *
+ * The font stacks name CSS variables that `app/(public)/book/[slug]/layout.tsx`
+ * defines with next/font. The literal fallbacks after each one matter: the
+ * variable is undefined until that font's class is applied, and a bare
+ * `var(--font-fraunces)` would otherwise resolve to nothing.
+ */
+
+:root [data-booking-theme] {
+  /* Shared shape scale — themes override what they need. */
+  --bk-radius-sm: 8px;
+  --bk-radius: 12px;
+  --bk-radius-lg: 18px;
+  --bk-control-h: 48px;
+
+  background: var(--bk-ground);
+  color: var(--bk-text);
+  font-family: var(--bk-font-body);
+}
+
+/*
+ * Success and notice colours.
+ *
+ * The shared steps mark a completed stepper dot, an "available" spot and the
+ * waitlist panel, and those meanings have to survive a change of ground — the
+ * fixed emerald/amber pairs they used to carry were pale fills chosen for a
+ * white page and turned into bright patches on Sesi. Each theme states its own
+ * pair; the utilities in the steps carry the original colour as a var()
+ * fallback, so a step rendered outside a themed wrapper still looks right.
+ */
+
+/* ── Sajian — warm editorial ─────────────────────────────────────────── */
+
+:root [data-booking-theme="sajian"] {
+  --bk-ground: #f4ecde;
+  --bk-surface: #ffffff;
+  --bk-surface-2: #fbf6ec;
+  --bk-panel: #1f1611;
+  --bk-panel-text: #f5ebdc;
+  /* 4.6:1 on --bk-panel. */
+  --bk-panel-muted: #c3ae94;
+  --bk-text: #1f1611;
+  /* 5.0:1 on --bk-ground, 4.5:1 on --bk-surface-2. */
+  --bk-muted: #77604c;
+  --bk-border: #e0d2b6;
+  --bk-accent: #a3553b;
+  /* 4.5:1 on --bk-accent. */
+  --bk-accent-contrast: #f7f1e6;
+  --bk-accent-soft: #f0e0d4;
+  --bk-font-display: var(--font-fraunces), Georgia, "Times New Roman", serif;
+  --bk-font-body: var(--font-karla), ui-sans-serif, system-ui, sans-serif;
+  --bk-success: #3d6b47;
+  --bk-success-bg: #dfe9dc;
+  --bk-success-text: #2f5138;
+  --bk-notice: #9f6b33;
+  --bk-notice-bg: #f3e2c2;
+  --bk-notice-text: #6e4a1a;
+  --bk-notice-border: #e3cda6;
+  --bk-shadow: 0 1px 2px rgb(31 22 17 / 0.06);
+  --bk-radius: 12px;
+  --bk-radius-lg: 16px;
+}
+
+/* ── Atlas — full-screen floor plan ──────────────────────────────────── */
+
+:root [data-booking-theme="atlas"] {
+  --bk-ground: #e9e7e0;
+  --bk-surface: #ffffff;
+  --bk-surface-2: #f2f0ea;
+  --bk-panel: #ffffff;
+  --bk-panel-text: #101418;
+  --bk-panel-muted: #5c6670;
+  --bk-text: #101418;
+  /* 4.9:1 on --bk-surface. */
+  --bk-muted: #5c6670;
+  --bk-border: #d7d4cb;
+  --bk-accent: #15594b;
+  /* 8.0:1 on --bk-accent. */
+  --bk-accent-contrast: #ffffff;
+  --bk-accent-soft: #e4efea;
+  --bk-font-display: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
+  --bk-font-body: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  --bk-success: #1a6b45;
+  --bk-success-bg: #ddede3;
+  --bk-success-text: #14532d;
+  --bk-notice: #b4562f;
+  --bk-notice-bg: #f7e8e0;
+  --bk-notice-text: #8a3f22;
+  --bk-notice-border: #ebd3c6;
+  --bk-shadow: 0 8px 30px rgb(16 20 24 / 0.16);
+  --bk-radius: 12px;
+  --bk-radius-lg: 18px;
+}
+
+/* ── Sesi — midnight concierge ───────────────────────────────────────── */
+
+:root [data-booking-theme="sesi"] {
+  --bk-ground: #0e0c0a;
+  --bk-surface: #16130f;
+  --bk-surface-2: #1c1811;
+  --bk-panel: #16130f;
+  --bk-panel-text: #f2ebe0;
+  --bk-panel-muted: #a2988a;
+  --bk-text: #f2ebe0;
+  /* 6.4:1 on --bk-ground. */
+  --bk-muted: #a2988a;
+  --bk-border: #332c24;
+  --bk-accent: #d9b36c;
+  /* 9.4:1 on --bk-accent. */
+  --bk-accent-contrast: #14110d;
+  --bk-accent-soft: #241d13;
+  --bk-font-display: var(--font-instrument-serif), Georgia, "Times New Roman", serif;
+  --bk-font-body: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
+  --bk-success: #7fb88e;
+  --bk-success-bg: #17251b;
+  --bk-success-text: #a9d2b4;
+  --bk-notice: #e3c58c;
+  --bk-notice-bg: #241d13;
+  --bk-notice-text: #e3c58c;
+  --bk-notice-border: #3a2e1b;
+  --bk-shadow: 0 1px 2px rgb(0 0 0 / 0.4);
+  --bk-radius: 12px;
+  --bk-radius-lg: 16px;
+}
+
+/*
+ * The steps are shared markup built from shadcn primitives, so the themes
+ * redirect the handful of shadcn tokens those primitives read. Without this a
+ * `<Card>` inside Sesi would still paint white on near-black.
+ */
+:root [data-booking-theme] {
+  --background: var(--bk-ground);
+  --foreground: var(--bk-text);
+  --card: var(--bk-surface);
+  --card-foreground: var(--bk-text);
+  --popover: var(--bk-surface);
+  --popover-foreground: var(--bk-text);
+  --primary: var(--bk-accent);
+  --primary-foreground: var(--bk-accent-contrast);
+  --secondary: var(--bk-surface-2);
+  --secondary-foreground: var(--bk-text);
+  --muted: var(--bk-surface-2);
+  --muted-foreground: var(--bk-muted);
+  --accent: var(--bk-accent-soft);
+  --accent-foreground: var(--bk-text);
+  --border: var(--bk-border);
+  --input: var(--bk-border);
+  --ring: var(--bk-accent);
+}
+
+/* Headings in the guest flow carry the theme's display face. */
+:root [data-booking-theme] :is(h1, h2, h3) {
+  font-family: var(--bk-font-display);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/*
+ * Instrument Serif ships a single 400 weight, so a 600 heading would be
+ * synthesised into a smeared faux-bold. Sesi asks for the real thing instead.
+ */
+:root [data-booking-theme="sesi"] :is(h1, h2, h3) {
+  font-weight: 400;
+}

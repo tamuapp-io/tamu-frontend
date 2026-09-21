@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, ArrowLeft, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,11 @@ import {
   type VenueMapHotspot,
 } from "@/components/venue-map-canvas";
 import { publicVenueMapApi } from "@/lib/api/venue-map";
+import {
+  DEFAULT_BOOKING_CHARGE,
+  chargeSentence,
+  type BookingChargeConfig,
+} from "@/lib/booking-charge";
 import { useMapAssetUrl } from "@/lib/hooks/use-map-asset";
 import {
   formatGuestAssignedTables,
@@ -52,6 +58,28 @@ function StepError({ onRetry, onBack }: { onRetry: () => void; onBack: () => voi
   );
 }
 
+/**
+ * Where the floor plan is drawn.
+ *
+ * By default it sits inside the step's own card, under the heading. A theme can
+ * instead hand these steps a container of its own — Atlas gives the plan the
+ * whole screen and keeps the controls in its side panel — and the canvas is
+ * portalled there. One component, one query, one selection either way; the
+ * alternative was a second copy of the spot step that would drift from this one.
+ */
+function CanvasSlot({
+  portal,
+  className,
+  children,
+}: {
+  portal?: Element | null;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  if (portal) return createPortal(children, portal);
+  return <div className={className}>{children}</div>;
+}
+
 /* ── Step: pick a section ─────────────────────────────────────────────── */
 
 export function StepSection({
@@ -59,11 +87,14 @@ export function StepSection({
   selectedId,
   onSelect,
   onBack,
+  canvasPortal,
 }: {
   slug: string;
   selectedId: string | null;
   onSelect: (section: VenueMapSectionSummary) => void;
   onBack: () => void;
+  /** Draw the plan here instead of inside this card. See CanvasSlot. */
+  canvasPortal?: Element | null;
 }) {
   const query = useQuery({
     queryKey: ["public", slug, "venue-map"],
@@ -109,9 +140,11 @@ export function StepSection({
       </p>
 
       {/* The map itself. The card grid below is the keyboard path and the
-          small-screen path — outlines are unusable at 375px. */}
+          small-screen path — outlines are unusable at 375px, so the card keeps
+          it to sm and up. A theme that portals it out has given it room to be
+          usable, and that rule does not apply there. */}
       {venueMap && mapUrl && areas.length > 0 && (
-        <div className="mt-4 hidden sm:block">
+        <CanvasSlot portal={canvasPortal} className="mt-4 hidden sm:block">
           <VenueMapCanvas
             asset={{ ...venueMap, url: mapUrl }}
             hotspots={[]}
@@ -122,7 +155,7 @@ export function StepSection({
               if (section) onSelect(section);
             }}
           />
-        </div>
+        </CanvasSlot>
       )}
       {venueMap && mapFailed && (
         <p className="mt-4 rounded-lg border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
@@ -197,6 +230,8 @@ export function StepTable({
   onSelectCombination,
   onBack,
   onNext,
+  canvasPortal,
+  charge = DEFAULT_BOOKING_CHARGE,
 }: {
   slug: string;
   sectionId: string;
@@ -209,6 +244,10 @@ export function StepTable({
   onSelectCombination: (combination: VenueMapCombination | null) => void;
   onBack: () => void;
   onNext: () => void;
+  /** Draw the plan here instead of inside this card. See CanvasSlot. */
+  canvasPortal?: Element | null;
+  /** How this venue words its amounts and how much it takes online. */
+  charge?: BookingChargeConfig;
 }) {
   const query = useQuery({
     queryKey: ["public", slug, "venue-map", sectionId, reservedAt, partySize],
@@ -338,7 +377,7 @@ export function StepTable({
         )}
       </p>
 
-      <div className="mt-4">
+      <CanvasSlot portal={canvasPortal} className="mt-4">
         <VenueMapCanvas
           asset={venueMap && mapUrl ? { ...venueMap, url: mapUrl } : null}
           hotspots={hotspots}
@@ -360,7 +399,7 @@ export function StepTable({
               : "This venue has no map yet — pick from the list below."
           }
         />
-      </div>
+      </CanvasSlot>
 
       {/* Keyboard- and screen-reader-navigable equivalent of the map. An
           illustrated canvas can't be operated without one (WCAG 2.1 AA), and it
@@ -404,7 +443,7 @@ export function StepTable({
                         "text-[11px]",
                         t.state === "booked" && "text-destructive",
                         t.state === "unfit" && "text-muted-foreground",
-                        t.state === "available" && "text-emerald-600",
+                        t.state === "available" && "text-[color:var(--bk-success,#059669)]",
                       )}
                     >
                       {t.state === "booked"
@@ -449,7 +488,7 @@ export function StepTable({
                       {formatMoney(c.price_cents, "IDR")}
                     </span>
                   )}
-                  <span className="text-[11px] text-emerald-600">Available</span>
+                  <span className="text-[11px] text-[color:var(--bk-success,#059669)]">Available</span>
                 </span>
               </button>
             </li>
@@ -469,11 +508,14 @@ export function StepTable({
           .
         </p>
       )}
-
+      {/* The one line that says what this costs. Worded by the venue's charge
+          settings, not hard-coded: a minimum spend that claims to be "paid now
+          to confirm" tells the guest their money is gone when in fact it comes
+          off their bill. */}
       {selected && selected.price_cents > 0 && (
         <p className="mt-4 rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm">
           <span className="font-medium">{selected.name}</span> —{" "}
-          {formatMoney(selected.price_cents, "IDR")}, paid now to confirm your booking.
+          {chargeSentence(selected.price_cents, charge, (c) => formatMoney(c, "IDR"))}
         </p>
       )}
 
@@ -483,7 +525,10 @@ export function StepTable({
             {formatGuestAssignedTables(selectedGroup.tables)}
           </span>
           {selectedGroup.price_cents > 0 && (
-            <> — {formatMoney(selectedGroup.price_cents, "IDR")}, paid now to confirm your booking.</>
+            <>
+              {" "}
+              — {chargeSentence(selectedGroup.price_cents, charge, (c) => formatMoney(c, "IDR"))}
+            </>
           )}
           <span className="mt-1 block text-xs text-muted-foreground">
             {guestCombinationNote(selectedGroup.tables.length, partySize)}

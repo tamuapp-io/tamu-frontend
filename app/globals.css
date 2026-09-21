@@ -1,5 +1,9 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+/* Booking-page themes. Imported here (not from the route) so the token blocks
+ * always land after the `:root` defaults below; their `:root [data-booking-theme]`
+ * selectors then win on specificity regardless of how the bundler orders files. */
+@import "./booking-themes.css";
 
 @custom-variant dark (&:is(.dark *));
 

@@ -421,6 +421,22 @@ export interface PublicTenant {
   logo_url?: string | null;
   cover_url?: string | null;
   brand_color?: string | null;
+  /**
+   * Which guest-facing look to render, already resolved by the server against
+   * its own registry. Absent on older backends — the frontend falls back to
+   * the default theme, which is what those venues were always rendering.
+   */
+  booking_theme?: string | null;
+  /**
+   * What a priced table's amount means to a guest and how much of it is taken
+   * online. Absent on older backends, where it resolves to the previous
+   * behaviour: a table fee, charged in full.
+   */
+  booking_charge?: {
+    type: string;
+    deposit_mode: string;
+    deposit_percent: number;
+  } | null;
   /** Bounded list (90 days, 20 max). Absent on older backends. */
   upcoming_events?: PublicUpcomingEvent[];
 }

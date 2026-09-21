@@ -6,6 +6,7 @@ import { AppTopbar } from "@/components/app-topbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TablePricingTab } from "@/components/table-pricing-tab";
 import { KpiStat } from "@/components/kpi-stat";
 import { SectionedFloorPlan } from "@/components/sectioned-floor-plan";
 import { VenueMapEditor } from "@/components/venue-map-editor";
@@ -227,6 +228,7 @@ export default function TablesPage() {
             <TabsTrigger value="floor">Floor plan</TabsTrigger>
             {!isSpa && <TabsTrigger value="combinations">Combinations</TabsTrigger>}
             {hasVenueMap && <TabsTrigger value="map">Venue map</TabsTrigger>}
+            {!isSpa && <TabsTrigger value="pricing">Pricing</TabsTrigger>}
             {!isSpa && <TabsTrigger value="hours">Hours</TabsTrigger>}
           </TabsList>
 
@@ -394,6 +396,12 @@ export default function TablesPage() {
           {hasVenueMap && (
             <TabsContent value="map" className="mt-4">
               <VenueMapEditor />
+            </TabsContent>
+          )}
+
+          {!isSpa && (
+            <TabsContent value="pricing" className="mt-4">
+              <TablePricingTab />
             </TabsContent>
           )}
 
