@@ -4,7 +4,16 @@ import { useEffect, useState } from "react";
 import { fetchObjectUrl } from "@/lib/api/client";
 
 export interface MapAssetState {
-  /** Object URL once loaded; null while loading or after a failure. */
+  /** Object URL once loaded;export function useMapAssetUrl(
+  pathOrUrl: string | null | undefined,
+  directUrl?: string | null,
+): MapAssetState {
+  // A public raster map needs none of this. The object store serves it from a
+  // CDN edge, and an `<img src>` to it is not a CORS request and carries no
+  // bearer token — so there is nothing to fetch, blob, refcount or revoke.
+  // Only SVG and private disks come through the proxy below.
+  const direct = typeof directUrl === "string" && directUrl !== "" ? directUrl : null;
+while loading or after a failure. */
   url: string | null;
   /** True once the fetch has definitively failed. */
   failed: boolean;
@@ -76,7 +85,16 @@ function release(key: string): void {
  * like a section with no artwork uploaded, which sent debugging in entirely the
  * wrong direction.
  */
-export function useMapAssetUrl(pathOrUrl: string | null | undefined): MapAssetState {
+export function useMapAssetUrl(
+  pathOrUrl: string | null | undefined,
+  directUrl?: string | null,
+): MapAssetState {
+  // A public raster map needs none of the machinery below. The object store
+  // serves it from a CDN edge, and an `<img src>` to it is not a CORS request
+  // and carries no bearer token — so there is nothing to fetch, blob, refcount
+  // or revoke. Only SVG and private disks come through the proxy.
+  const direct = typeof directUrl === "string" && directUrl !== "" ? directUrl : null;
+
   // Keyed by source so a changed asset never shows the previous one's blob
   // while the new fetch is in flight — and so clearing the source needs no
   // setState inside an effect.
@@ -84,7 +102,7 @@ export function useMapAssetUrl(pathOrUrl: string | null | undefined): MapAssetSt
   const [failedKey, setFailedKey] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!pathOrUrl) return;
+    if (!pathOrUrl || direct) return;
 
     let cancelled = false;
     const entry = acquire(pathOrUrl);
@@ -105,7 +123,9 @@ export function useMapAssetUrl(pathOrUrl: string | null | undefined): MapAssetSt
       cancelled = true;
       release(pathOrUrl);
     };
-  }, [pathOrUrl]);
+  }, [pathOrUrl, direct]);
+
+  if (direct) return { url: direct, failed: false };
 
   if (!pathOrUrl) return { url: null, failed: false };
 
