@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/toaster";
 import { ApiError } from "@/lib/api/client";
-import { fetchSettings, patchSettings } from "@/lib/api/settings";
+import { fetchOperatingHourScopes, fetchSettings, patchSettings } from "@/lib/api/settings";
 import {
   bookingCharge,
   chargeTypeLabel,
@@ -27,7 +27,12 @@ import {
   useUpdateTable,
 } from "@/lib/hooks/use-tables";
 import { cn } from "@/lib/utils";
-import type { FloorSection, Table } from "@/lib/types";
+import type {
+  FloorSection,
+  OperatingHourRow,
+  OperatingHourScopes,
+  Table,
+} from "@/lib/types";
 
 /**
  * Prices and minimum spends, per section and per table, plus what share of them
@@ -197,6 +202,77 @@ function SectionBlock({
   );
 }
 
+
+const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+/**
+ * The periods that charge something other than the standing rate.
+ *
+ * Shown here because this is where someone reasons about what a table costs,
+ * while the multipliers themselves are set in the Hours tab, next to the times
+ * they belong to. Nobody should have to hold both screens in their head to
+ * answer "what does the cabana cost on Friday".
+ */
+function PeakPeriods({ scopes }: { scopes: OperatingHourScopes | undefined }) {
+  const rows = useMemo(() => {
+    if (!scopes) return [];
+
+    const out: { key: string; scope: string; day: number; name: string; percent: number }[] = [];
+
+    const collect = (scope: string, periods: OperatingHourRow[]) => {
+      for (const p of periods) {
+        const percent = p.price_multiplier ?? 100;
+        if (p.is_closed || percent === 100) continue;
+        out.push({ key: `${scope}-${p.id}`, scope, day: p.day_of_week, name: p.period_name, percent });
+      }
+    };
+
+    collect("Venue", scopes.venue ?? []);
+    for (const s of scopes.sections ?? []) {
+      if (s.has_custom_hours) collect(s.name, s.periods ?? []);
+    }
+
+    return out.sort((a, b) => a.day - b.day || a.name.localeCompare(b.name));
+  }, [scopes]);
+
+  if (rows.length === 0) {
+    return (
+      <p className="rounded-xl border border-dashed border-border p-4 text-xs text-muted-foreground">
+        Every period charges the standing amount. To charge more at peak times,
+        set a percentage on a period in the <span className="font-medium">Hours</span> tab —
+        Friday dinner at 150% makes every amount below half as much again, that
+        period only.
+      </p>
+    );
+  }
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-border">
+      <div className="border-b border-border bg-muted/30 px-4 py-3">
+        <h3 className="text-sm font-semibold">Periods that change the price</h3>
+        <p className="text-xs text-muted-foreground">
+          Set in the Hours tab. Applied to whatever each table charges below.
+        </p>
+      </div>
+      <ul className="divide-y divide-border">
+        {rows.map((r) => (
+          <li key={r.key} className="flex items-center gap-3 px-4 py-2.5 text-sm">
+            <span className="w-10 shrink-0 text-xs font-medium text-muted-foreground">
+              {DAY_NAMES[r.day] ?? "—"}
+            </span>
+            <span className="min-w-0 flex-1 truncate">
+              {r.name}
+              {r.scope !== "Venue" && (
+                <span className="ml-2 text-xs text-muted-foreground">{r.scope}</span>
+              )}
+            </span>
+            <span className="tabular-nums text-sm font-medium">{r.percent}%</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 export function TablePricingTab() {
   const qc = useQueryClient();
   const hasVenueMap = useHasFeature("venue_map");
@@ -208,6 +284,12 @@ export function TablePricingTab() {
   const settings = useQuery({
     queryKey: ["tenant-settings"],
     queryFn: async () => fetchSettings().then((r) => r.data),
+  });
+  // Read-only here: the multipliers are edited in the Hours tab, beside the
+  // times they apply to. This screen only reports what they do to the amounts.
+  const hourScopes = useQuery({
+    queryKey: ["operating-hour-scopes"],
+    queryFn: async () => fetchOperatingHourScopes().then((r) => r.data),
   });
 
   const sectionMutations = useFloorSectionMutations();
@@ -402,6 +484,8 @@ export function TablePricingTab() {
           .
         </p>
       </Card>
+
+      <PeakPeriods scopes={hourScopes.data} />
 
       {rows.length === 0 ? (
         <p className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">

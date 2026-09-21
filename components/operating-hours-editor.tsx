@@ -36,6 +36,8 @@ export type HoursDraftRow = {
   slot_duration: number;
   turn_buffer: number;
   max_covers: string;
+  /** Percent of the table amount charged in this period. "" = the standing rate. */
+  price_multiplier: string;
   is_closed: boolean;
 };
 
@@ -54,6 +56,7 @@ export function apiRowToDraft(r: OperatingHourRow, i: number): HoursDraftRow {
     slot_duration: r.slot_duration,
     turn_buffer: r.turn_buffer,
     max_covers: r.max_covers != null ? String(r.max_covers) : "",
+    price_multiplier: r.price_multiplier != null ? String(r.price_multiplier) : "",
     is_closed: r.is_closed,
   };
 }
@@ -70,6 +73,7 @@ export function defaultHoursRow(): HoursDraftRow {
     slot_duration: 30,
     turn_buffer: 15,
     max_covers: "",
+    price_multiplier: "",
     is_closed: false,
   };
 }
@@ -97,6 +101,15 @@ export function serializeHoursDraft(rows: HoursDraftRow[]) {
         if (t === "") return null;
         const n = Number.parseInt(t, 10);
         return Number.isFinite(n) ? n : null;
+      })(),
+      // Null rather than 100: the column being empty is what "no change" means,
+      // and writing 100 everywhere would make every period look deliberate.
+      price_multiplier: (() => {
+        const t = r.price_multiplier.trim();
+        if (t === "") return null;
+        const n = Number.parseInt(t, 10);
+        if (!Number.isFinite(n) || n < 1 || n > 1000) return null;
+        return n === 100 ? null : n;
       })(),
       is_closed: r.is_closed,
     })),
@@ -326,6 +339,30 @@ export function OperatingHoursEditor({
                         onChange={(e) => patch(idx, { max_covers: e.target.value })}
                         disabled={row.is_closed}
                       />
+                    </div>
+
+                <div className="space-y-1.5 sm:col-span-2">
+                      <Label className="text-xs">
+                        Price for this period{" "}
+                        <span className="font-normal text-muted-foreground">(optional)</span>
+                      </Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          className="h-9 w-24 text-right tabular-nums"
+                          type="number"
+                          min={1}
+                          max={1000}
+                          step={5}
+                          placeholder="100"
+                          value={row.price_multiplier}
+                          onChange={(e) => patch(idx, { price_multiplier: e.target.value })}
+                          disabled={row.is_closed}
+                        />
+                        <span className="text-xs text-muted-foreground">
+                          % of each table&rsquo;s amount — 150 charges half as much again,
+                          blank charges the standing rate.
+                        </span>
+                      </div>
                     </div>
                   </>
                 )}

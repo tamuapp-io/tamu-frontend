@@ -609,6 +609,11 @@ export interface OperatingHourRow {
   slot_duration: number;
   turn_buffer: number;
   max_covers: number | null;
+  /**
+   * Percent of a table's standing amount charged in this period — 150 is one
+   * and a half times. Null means the standing rate. Absent on older backends.
+   */
+  price_multiplier?: number | null;
   is_closed: boolean;
   /** null = the venue-wide schedule. Absent on older backends. */
   floor_section_id?: string | null;
