@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TablePricingTab } from "@/components/table-pricing-tab";
-import { KpiStat } from "@/components/kpi-stat";
+// import { KpiStat } from "@/components/kpi-stat";
 import { SectionedFloorPlan } from "@/components/sectioned-floor-plan";
 import { VenueMapEditor } from "@/components/venue-map-editor";
 import { TableCombinationsPanel } from "@/components/table-combinations-panel";
@@ -195,7 +195,7 @@ export default function TablesPage() {
         </div>
 
         {/* Stat cards */}
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {/* <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <KpiStat
             label="Total tables"
             value={stats.total}
@@ -220,7 +220,7 @@ export default function TablesPage() {
             description={`${stats.other.covers} max covers`}
             loading={isPending}
           />
-        </div>
+        </div> */}
 
         <Tabs defaultValue="list">
           <TabsList>
