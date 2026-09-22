@@ -36,7 +36,10 @@ export type HoursDraftRow = {
   slot_duration: number;
   turn_buffer: number;
   max_covers: string;
-  /** Percent of the table amount charged in this period. "" = the standing rate. */
+  /**
+   * Percent of the table amount charged in this period, as typed.
+   * "" = the standing rate (the period changes nothing); "0" = free.
+   */
   price_multiplier: string;
   is_closed: boolean;
 };
@@ -106,9 +109,13 @@ export function serializeHoursDraft(rows: HoursDraftRow[]) {
       // and writing 100 everywhere would make every period look deliberate.
       price_multiplier: (() => {
         const t = r.price_multiplier.trim();
+        // Blank means "this period does not touch the price"; 0 means free
+        // during it. Both are legitimate and they are NOT the same thing, so
+        // the empty check has to come before any numeric coercion — Number("")
+        // is 0, which would silently turn every untouched period free.
         if (t === "") return null;
         const n = Number.parseInt(t, 10);
-        if (!Number.isFinite(n) || n < 1 || n > 1000) return null;
+        if (!Number.isFinite(n) || n < 0 || n > 1000) return null;
         return n === 100 ? null : n;
       })(),
       is_closed: r.is_closed,
@@ -350,7 +357,7 @@ export function OperatingHoursEditor({
                         <Input
                           className="h-9 w-24 text-right tabular-nums"
                           type="number"
-                          min={1}
+                          min={0}
                           max={1000}
                           step={5}
                           placeholder="100"
@@ -359,8 +366,8 @@ export function OperatingHoursEditor({
                           disabled={row.is_closed}
                         />
                         <span className="text-xs text-muted-foreground">
-                          % of each table&rsquo;s amount — 150 charges half as much again,
-                          blank charges the standing rate.
+                          % of each table&rsquo;s amount. 150 charges half as much
+                          again, 0 is free, and blank leaves the standing rate alone.
                         </span>
                       </div>
                     </div>

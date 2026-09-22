@@ -150,6 +150,12 @@ export function StepSection({
             hotspots={[]}
             areas={areas}
             selectedId={selectedId}
+            /*
+             * Zoom to the area once it is chosen — including when a guest
+             * comes BACK to this step, where an unfocused whole-venue view
+             * gives no sign of what they already picked.
+             */
+            focusBounds={sections.find((sec) => sec.id === selectedId)?.bounds ?? null}
             onSelectArea={(id) => {
               const section = sections.find((sec) => sec.id === id);
               if (section) onSelect(section);

@@ -488,11 +488,19 @@ export function VenueMapCanvas({
     );
   }
 
-  // Handles are drawn in viewBox units, so size them off the artwork rather than
-  // hardcoding: the same pixel value would be invisible on a 4000-unit map and
-  // swallow the table on a 200-unit one.
-  const handleSize = Math.max(6, Math.min(asset.width, asset.height) * 0.018);
-  const vertexSize = Math.max(7, Math.min(asset.width, asset.height) * 0.02);
+  /*
+   * Handles are drawn in viewBox units inside a stage the browser scales with
+   * a CSS transform, so a fixed size grows on screen as the map is zoomed —
+   * which is how a small table ends up buried under its own corner squares at
+   * 4x, exactly when you are zoomed in to place it precisely.
+   *
+   * Dividing by the live scale keeps them a constant size on screen, which is
+   * what a drag handle should be: big enough to grab, never bigger than the
+   * thing it is attached to.
+   */
+  const zoomComp = 1 / Math.min(Math.max(zoomLabel, MIN_SCALE), MAX_SCALE);
+  const handleSize = Math.max(4, Math.min(asset.width, asset.height) * 0.011) * zoomComp;
+  const vertexSize = Math.max(5, Math.min(asset.width, asset.height) * 0.013) * zoomComp;
 
   return (
     <div className="space-y-2">
@@ -565,6 +573,9 @@ export function VenueMapCanvas({
               const d = points.map((pt) => `${pt.x},${pt.y}`).join(" ");
               const label = centroid(points);
               const clickable = !!onSelectArea && !area.disabled && !editing;
+              const isSelected = Array.isArray(selectedId)
+                ? selectedId.includes(area.id)
+                : area.id === selectedId;
 
               return (
                 <g
@@ -605,8 +616,22 @@ export function VenueMapCanvas({
                       x={label.x}
                       y={label.y}
                       textAnchor="middle"
-                      className="pointer-events-none select-none fill-foreground font-medium uppercase"
-                      style={{ fontSize: Math.max(10, asset.height * 0.028) }}
+                      className={cn(
+                        "pointer-events-none select-none fill-foreground uppercase transition-all",
+                        isSelected ? "font-semibold" : "font-medium",
+                      )}
+                      /*
+                       * Small until it is the one you picked. At the old size
+                       * every area shouted at once and the names covered the
+                       * artwork they were labelling; the chosen one earning the
+                       * larger type is what makes the map readable while you
+                       * are choosing, and legible once you have.
+                       */
+                      style={{
+                        fontSize: isSelected
+                          ? Math.max(11, asset.height * 0.026)
+                          : Math.max(7, asset.height * 0.015),
+                      }}
                     >
                       {area.label}
                     </text>

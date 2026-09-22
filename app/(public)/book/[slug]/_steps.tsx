@@ -331,7 +331,12 @@ export function StepDate({
   return (
     <Card className="p-6">
       <h2 className="text-lg font-semibold">{intro}</h2>
-      <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+      {/* One field per row, each the full width of the card.
+          Pairing these into two columns squeezed the party stepper until its
+          own count was clipped between the buttons, and left the phone field a
+          stub beside its country selector. A guest fills these once; the width
+          is worth more here than the vertical space it saves. */}
+      <div className="mt-5 grid grid-cols-1 gap-4">
         <div className="space-y-1.5">
           <Label htmlFor="b-date">
             <Calendar className="mr-1 inline h-3 w-3" /> Date
@@ -876,7 +881,8 @@ export function StepDetails({
           )}
         </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {/* Full width each, as with date and party size above. */}
+        <div className="grid grid-cols-1 gap-4">
           <div className="space-y-1.5">
             <Label htmlFor="g-email">Email</Label>
             <Input
