@@ -63,6 +63,8 @@ export interface BookingFlow {
   sectionProps: {
     slug: string;
     selectedId: string | null;
+    /** The chosen slot, so the area cards are priced and filtered for it. */
+    reservedAt: string | null;
     onSelect: (section: VenueMapSectionSummary) => void;
     onBack: () => void;
   };
@@ -227,6 +229,9 @@ export function useBookingFlow(slug: string, venue: PublicTenant): BookingFlow {
     sectionProps: {
       slug,
       selectedId: state.section_id,
+      // The chosen slot, so the area cards quote what this slot actually costs
+      // — a period the venue set to 0% should not advertise a price.
+      reservedAt: state.slot?.reserved_at_utc ?? null,
       onSelect: (section: VenueMapSectionSummary) => {
         // Changing area invalidates any spot chosen in the previous one.
         setState((s) => ({

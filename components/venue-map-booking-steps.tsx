@@ -87,18 +87,24 @@ export function StepSection({
   selectedId,
   onSelect,
   onBack,
+  reservedAt,
   canvasPortal,
 }: {
   slug: string;
   selectedId: string | null;
   onSelect: (section: VenueMapSectionSummary) => void;
   onBack: () => void;
+  /** The slot being booked, so areas are priced and filtered for it. */
+  reservedAt?: string | null;
   /** Draw the plan here instead of inside this card. See CanvasSlot. */
   canvasPortal?: Element | null;
 }) {
+  // The instant is part of the key: the same venue answers differently at a
+  // free hour than at a peak one, and caching those together would quote one
+  // price for the other slot.
   const query = useQuery({
-    queryKey: ["public", slug, "venue-map"],
-    queryFn: async () => (await publicVenueMapApi.overview(slug)).data,
+    queryKey: ["public", slug, "venue-map", reservedAt ?? null],
+    queryFn: async () => (await publicVenueMapApi.overview(slug, reservedAt)).data,
   });
 
   const sections = useMemo(() => query.data?.sections ?? [], [query.data]);
@@ -116,9 +122,11 @@ export function StepSection({
         .map((sec) => ({
           id: sec.id,
           label: sec.name,
-          sublabel: sec.price_from_cents
-            ? `from ${formatMoney(sec.price_from_cents, "IDR")}`
-            : null,
+          sublabel: sec.price_from_cents == null
+            ? null
+            : sec.price_from_cents === 0
+              ? "Free"
+              : "from " + formatMoney(sec.price_from_cents, "IDR"),
           points: sec.polygon!,
         })),
     [sections],
@@ -187,11 +195,15 @@ export function StepSection({
             {s.description && (
               <span className="mt-1 block text-xs text-muted-foreground">{s.description}</span>
             )}
-            {s.price_from_cents ? (
+            {/* Null means nothing is priced here; 0 means this slot is free,
+                which is a thing worth saying rather than a blank space. */}
+            {s.price_from_cents == null ? null : s.price_from_cents === 0 ? (
+              <span className="mt-2 block text-sm font-medium">Free</span>
+            ) : (
               <span className="mt-2 block text-sm font-medium">
                 from {formatMoney(s.price_from_cents, "IDR")}
               </span>
-            ) : null}
+            )}
           </button>
         ))}
       </div>
@@ -264,12 +276,13 @@ export function StepTable({
       })).data,
   });
 
-  // The SAME query the area step ran, so this is a cache hit: the venue map and
-  // every outline are already here, and the artwork blob is already loaded.
-  // That is what makes the transition a zoom rather than a page swap.
+  // The SAME query the area step ran — same key, same instant — so this is a
+  // cache hit: the venue map and every outline are already here, and the
+  // artwork blob is already loaded. That is what makes the transition a zoom
+  // rather than a page swap.
   const overview = useQuery({
-    queryKey: ["public", slug, "venue-map"],
-    queryFn: async () => (await publicVenueMapApi.overview(slug)).data,
+    queryKey: ["public", slug, "venue-map", reservedAt ?? null],
+    queryFn: async () => (await publicVenueMapApi.overview(slug, reservedAt)).data,
   });
 
   const tables = query.data?.tables ?? [];

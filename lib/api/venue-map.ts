@@ -13,8 +13,18 @@ import type {
  * callers can fall back to the classic slot flow.
  */
 export const publicVenueMapApi = {
-  overview: (slug: string) =>
-    api.get<ItemEnvelope<VenueMapOverview>>(`public/${slug}/venue-map`, { auth: false }),
+  /**
+   * `reservedAt` is what lets the server reprice each area for the slot being
+   * booked, and drop areas that are closed then. The endpoint always accepted
+   * it and the client never sent it, so the area cards quoted the standing
+   * rate even during hours the venue had set to free.
+   */
+  overview: (slug: string, reservedAt?: string | null) =>
+    api.get<ItemEnvelope<VenueMapOverview>>(
+      `public/${slug}/venue-map`
+        + (reservedAt ? `?reserved_at=${encodeURIComponent(reservedAt)}` : ""),
+      { auth: false },
+    ),
 
   sectionTables: (
     slug: string,
