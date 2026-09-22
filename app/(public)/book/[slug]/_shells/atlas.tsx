@@ -19,10 +19,20 @@ import { BookingStepsOutlet, MAP_STEPS } from "./_outlet";
  * the map does not blink when the guest arrives at the area step and the same
  * artwork becomes interactive.
  */
-function AtlasBackdrop({ slug, venueName }: { slug: string; venueName: string }) {
+function AtlasBackdrop({
+  slug,
+  venueName,
+  reservedAt,
+}: {
+  slug: string;
+  venueName: string;
+  /** Kept in the key so this shares the area step's cache entry rather than
+   *  fetching the same map a second time under a different instant. */
+  reservedAt: string | null;
+}) {
   const query = useQuery({
-    queryKey: ["public", slug, "venue-map"],
-    queryFn: async () => (await publicVenueMapApi.overview(slug)).data,
+    queryKey: ["public", slug, "venue-map", reservedAt ?? null],
+    queryFn: async () => (await publicVenueMapApi.overview(slug, reservedAt)).data,
   });
 
   const sections = useMemo(() => query.data?.sections ?? [], [query.data]);
@@ -118,7 +128,11 @@ export function AtlasShell({ flow }: { flow: BookingFlow }) {
         {/* Nothing of ours during the map steps: the step portals its canvas in
             here, and a backdrop underneath it would be a second copy of the
             same plan. */}
-        {onMapStep ? null : <AtlasBackdrop slug={flow.slug} venueName={venue.name} />}
+        {onMapStep ? null : <AtlasBackdrop
+            slug={flow.slug}
+            venueName={venue.name}
+            reservedAt={flow.state.slot?.reserved_at_utc ?? null}
+          />}
       </div>
 
       <aside
