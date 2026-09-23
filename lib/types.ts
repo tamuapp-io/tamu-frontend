@@ -607,6 +607,12 @@ export interface OperatingHourRow {
   open_time: string | null;
   close_time: string | null;
   slot_duration: number;
+  /**
+   * How long the party keeps the table, in minutes. Null inherits
+   * `slot_duration`, which is what that column meant before the grid step and
+   * the sitting were separated. Absent on older backends.
+   */
+  duration_mins?: number | null;
   turn_buffer: number;
   max_covers: number | null;
   /**
