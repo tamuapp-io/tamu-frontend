@@ -34,6 +34,8 @@ export type HoursDraftRow = {
   open_time: string;
   close_time: string;
   slot_duration: number;
+  /** Sitting length in minutes, as typed. "" inherits the slot step. */
+  duration_mins: string;
   turn_buffer: number;
   max_covers: string;
   /**
@@ -57,6 +59,7 @@ export function apiRowToDraft(r: OperatingHourRow, i: number): HoursDraftRow {
     open_time: ot.length >= 8 ? ot.slice(0, 5) : ot,
     close_time: ct.length >= 8 ? ct.slice(0, 5) : ct,
     slot_duration: r.slot_duration,
+    duration_mins: r.duration_mins != null ? String(r.duration_mins) : "",
     turn_buffer: r.turn_buffer,
     max_covers: r.max_covers != null ? String(r.max_covers) : "",
     price_multiplier: r.price_multiplier != null ? String(r.price_multiplier) : "",
@@ -74,6 +77,7 @@ export function defaultHoursRow(): HoursDraftRow {
     open_time: "18:00",
     close_time: "22:00",
     slot_duration: 30,
+    duration_mins: "",
     turn_buffer: 15,
     max_covers: "",
     price_multiplier: "",
@@ -98,6 +102,15 @@ export function serializeHoursDraft(rows: HoursDraftRow[]) {
       open_time: r.is_closed ? null : r.open_time.trim(),
       close_time: r.is_closed ? null : r.close_time.trim(),
       slot_duration: Math.min(180, Math.max(5, Number(r.slot_duration) || 30)),
+      // Null inherits the step, which is what this meant before the two were
+      // separated — so leaving it blank keeps a venue on its current sitting.
+      duration_mins: (() => {
+        const t = r.duration_mins.trim();
+        if (t === "") return null;
+        const n = Number.parseInt(t, 10);
+        if (!Number.isFinite(n) || n < 5 || n > 1440) return null;
+        return n;
+      })(),
       turn_buffer: Math.min(240, Math.max(0, Number(r.turn_buffer) || 0)),
       max_covers: (() => {
         const t = r.max_covers.trim();
@@ -181,8 +194,9 @@ export function OperatingHoursEditor({
         <p className="text-xs text-muted-foreground">
           {hint ?? (
             <>
-              Times follow your venue timezone ({timezone}). Slot step is the interval
-              between bookable start times; turn buffer is spacing between parties.
+              Times follow your venue timezone ({timezone}). Slot step is how often a
+              start time is offered; sitting length is how long the party keeps the
+              table; turn buffer is the gap before the next one.
             </>
           )}
         </p>
@@ -205,17 +219,33 @@ export function OperatingHoursEditor({
           {rows.map((row, idx) => (
             <div
               key={row.key}
-              className="space-y-3 rounded-lg border border-border bg-muted/10 p-4"
+              className="space-y-4 rounded-lg border border-border bg-muted/10 p-4"
             >
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="text-[11px] font-medium uppercase text-muted-foreground">
+              {/* Header: what this row is, whether it runs at all, and the way
+                  to remove it. Closed sits here rather than among the fields it
+                  disables — it is the switch that decides whether any of them
+                  mean anything. */}
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                   Period {idx + 1}
                 </span>
+
+                <span className="flex items-center gap-2 rounded-md border border-border bg-background px-2.5 py-1.5">
+                  <Switch
+                    id={`closed-${row.key}`}
+                    checked={row.is_closed}
+                    onCheckedChange={(is_closed) => patch(idx, { is_closed })}
+                  />
+                  <Label htmlFor={`closed-${row.key}`} className="text-xs font-normal">
+                    Closed
+                  </Label>
+                </span>
+
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="h-8 text-destructive hover:text-destructive"
+                  className="ml-auto h-8 text-destructive hover:text-destructive"
                   disabled={rows.length <= minRows || saving}
                   onClick={() =>
                     onChange((prev) =>
@@ -230,6 +260,8 @@ export function OperatingHoursEditor({
                 </Button>
               </div>
 
+              {/* When it runs. One line: the day, what it is called, and the
+                  two times — read together or not at all. */}
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <div className="space-y-1.5">
                   <Label className="text-xs">Day</Label>
@@ -251,7 +283,7 @@ export function OperatingHoursEditor({
                   </Select>
                 </div>
 
-                <div className="space-y-1.5 sm:col-span-2 lg:col-span-1">
+                <div className="space-y-1.5">
                   <Label className="text-xs">Period name</Label>
                   <Input
                     className="h-9"
@@ -260,16 +292,6 @@ export function OperatingHoursEditor({
                     placeholder="e.g. Lunch"
                     disabled={row.is_closed}
                   />
-                </div>
-
-                <div className="flex items-end gap-2 sm:col-span-2">
-                  <div className="flex grow items-center justify-between rounded-md border border-border px-3 py-2">
-                    <Label className="text-xs font-normal">Closed</Label>
-                    <Switch
-                      checked={row.is_closed}
-                      onCheckedChange={(is_closed) => patch(idx, { is_closed })}
-                    />
-                  </div>
                 </div>
 
                 <div className="space-y-1.5">
@@ -293,49 +315,87 @@ export function OperatingHoursEditor({
                     disabled={row.is_closed}
                   />
                 </div>
+              </div>
 
-                {showAdvanced && (
-                  <>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">Slot step (min)</Label>
-                      <Input
-                        className="h-9"
-                        type="number"
-                        min={5}
-                        max={180}
-                        value={row.slot_duration || ""}
-                        onChange={(e) =>
-                          patch(idx, {
-                            slot_duration: Number.parseInt(e.target.value, 10) || 0,
-                          })
-                        }
-                        disabled={row.is_closed}
-                      />
+              {showAdvanced && (
+                <>
+                  {/* Pacing. These three only make sense read together — each
+                      one alone invites the wrong number — so they share a row
+                      and one explanation beneath it rather than each carrying
+                      its own note and stretching the grid. */}
+                  <div>
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Slot step (min)</Label>
+                        <Input
+                          className="h-9"
+                          type="number"
+                          min={5}
+                          max={180}
+                          value={row.slot_duration || ""}
+                          onChange={(e) =>
+                            patch(idx, {
+                              slot_duration: Number.parseInt(e.target.value, 10) || 0,
+                            })
+                          }
+                          disabled={row.is_closed}
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">
+                          Sitting length (min){" "}
+                          <span className="font-normal text-muted-foreground">
+                            (optional)
+                          </span>
+                        </Label>
+                        <Input
+                          className="h-9"
+                          type="number"
+                          min={5}
+                          max={1440}
+                          step={15}
+                          placeholder="Same as step"
+                          value={row.duration_mins}
+                          onChange={(e) => patch(idx, { duration_mins: e.target.value })}
+                          disabled={row.is_closed}
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Turn buffer (min)</Label>
+                        <Input
+                          className="h-9"
+                          type="number"
+                          min={0}
+                          max={240}
+                          value={row.turn_buffer}
+                          onChange={(e) =>
+                            patch(idx, {
+                              turn_buffer: Number.parseInt(e.target.value, 10) || 0,
+                            })
+                          }
+                          disabled={row.is_closed}
+                        />
+                      </div>
                     </div>
 
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">Turn buffer (min)</Label>
-                      <Input
-                        className="h-9"
-                        type="number"
-                        min={0}
-                        max={240}
-                        value={row.turn_buffer}
-                        onChange={(e) =>
-                          patch(idx, {
-                            turn_buffer: Number.parseInt(e.target.value, 10) || 0,
-                          })
-                        }
-                        disabled={row.is_closed}
-                      />
-                    </div>
+                    <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+                      <span className="font-medium text-foreground">Slot step</span> is how
+                      often a start time is offered.{" "}
+                      <span className="font-medium text-foreground">Sitting length</span> is
+                      how long the party keeps the table, and decides the last seating —
+                      blank means the same as the step, up to 1440 for a full day.{" "}
+                      <span className="font-medium text-foreground">Turn buffer</span> is the
+                      gap before the next party, never offered to guests.
+                    </p>
+                  </div>
 
-                    <div className="space-y-1.5 sm:col-span-2">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1.5">
                       <Label className="text-xs">
                         Max covers / slot{" "}
-                        <span className="font-normal text-muted-foreground">
-                          (optional)
-                        </span>
+                        <span className="font-normal text-muted-foreground">(optional)</span>
                       </Label>
                       <Input
                         className="h-9"
@@ -346,34 +406,35 @@ export function OperatingHoursEditor({
                         onChange={(e) => patch(idx, { max_covers: e.target.value })}
                         disabled={row.is_closed}
                       />
+                      <p className="text-[11px] leading-relaxed text-muted-foreground">
+                        Ceiling on guests seated per slot, across the whole venue.
+                      </p>
                     </div>
 
-                <div className="space-y-1.5 sm:col-span-2">
+                    <div className="space-y-1.5">
                       <Label className="text-xs">
                         Price for this period{" "}
                         <span className="font-normal text-muted-foreground">(optional)</span>
                       </Label>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          className="h-9 w-24 text-right tabular-nums"
-                          type="number"
-                          min={0}
-                          max={1000}
-                          step={5}
-                          placeholder="100"
-                          value={row.price_multiplier}
-                          onChange={(e) => patch(idx, { price_multiplier: e.target.value })}
-                          disabled={row.is_closed}
-                        />
-                        <span className="text-xs text-muted-foreground">
-                          % of each table&rsquo;s amount. 150 charges half as much
-                          again, 0 is free, and blank leaves the standing rate alone.
-                        </span>
-                      </div>
+                      <Input
+                        className="h-9"
+                        type="number"
+                        min={0}
+                        max={1000}
+                        step={5}
+                        placeholder="100"
+                        value={row.price_multiplier}
+                        onChange={(e) => patch(idx, { price_multiplier: e.target.value })}
+                        disabled={row.is_closed}
+                      />
+                      <p className="text-[11px] leading-relaxed text-muted-foreground">
+                        % of each table&rsquo;s amount. 150 charges half as much again,
+                        0 is free, blank leaves the standing rate alone.
+                      </p>
                     </div>
-                  </>
-                )}
-              </div>
+                  </div>
+                </>
+              )}
             </div>
           ))}
         </div>
