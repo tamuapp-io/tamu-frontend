@@ -27,6 +27,7 @@ import { PaymentGatewaysCard } from "@/components/payment-gateways-card";
 import { BookingDepositCard } from "@/components/booking-deposit-card";
 import { BookingThemeCard } from "@/components/booking-theme-card";
 import { VenueLogoField } from "@/components/venue-logo-field";
+import { TwilioWhatsappConnect } from "@/components/twilio-whatsapp-connect";
 import {
   OperatingHoursEditor,
   apiRowToDraft,
@@ -232,38 +233,6 @@ export default function SettingsPage() {
       : REMINDER_LEAD_DEFAULT;
 
   const whatsappInbox = settings.data?.whatsapp_inbox;
-  const [whatsappKeyDraft, setWhatsappKeyDraft] = useState("");
-
-  const saveWhatsapp = useMutation({
-    mutationFn: (wasender_api_key: string) =>
-      patchSettings({ whatsapp: { wasender_api_key } }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["tenant-settings"] });
-      qc.invalidateQueries({ queryKey: ["whatsapp-status"] });
-      setWhatsappKeyDraft("");
-      toast.success("WhatsApp settings saved");
-    },
-    onError: (err) => {
-      const flat =
-        err instanceof ApiError && err.errors
-          ? Object.values(err.errors).flat()[0]
-          : undefined;
-      toast.error(
-        "Could not save WhatsApp settings",
-        flat ?? (err instanceof Error ? err.message : undefined),
-      );
-    },
-  });
-
-  function handleSaveWhatsappKey() {
-    const key = whatsappKeyDraft.trim();
-    if (key.length < 16) {
-      toast.error("Invalid API key", "Enter your full WasenderAPI session key (at least 16 characters).");
-      return;
-    }
-    saveWhatsapp.mutate(key);
-  }
-
   function handleCopyWebhook() {
     const url = whatsappInbox?.webhook_url;
     if (!url) return;
@@ -945,7 +914,9 @@ export default function SettingsPage() {
                   <p className="mt-1 text-xs text-muted-foreground">
                     {whatsappInbox?.provider === "meta"
                       ? "WhatsApp is connected via Meta Cloud API. Configure the webhook URL in your Meta app dashboard."
-                      : "Connect your restaurant's WasenderAPI session to receive guest replies and chat from the WhatsApp page."}
+                      : whatsappInbox?.provider === "twilio"
+                        ? "Connect your restaurant's own Twilio account to send booking messages and chat with guests from the WhatsApp page."
+                        : "WhatsApp is not enabled for this environment."}
                   </p>
                 </div>
                 <div className="space-y-5 p-6">
@@ -987,74 +958,14 @@ export default function SettingsPage() {
                         </div>
                       ) : null}
                     </>
+                  ) : whatsappInbox?.provider === "twilio" ? (
+                    <TwilioWhatsappConnect inbox={whatsappInbox} />
                   ) : (
-                    <>
-                  {whatsappInbox?.configured && whatsappInbox.api_key_hint ? (
-                    <p className="text-xs text-muted-foreground">
-                      Current key:{" "}
-                      <span className="font-mono text-foreground">
-                        {whatsappInbox.api_key_hint}
-                      </span>
+                    <p className="rounded-lg border border-dashed border-border p-4 text-xs text-muted-foreground">
+                      WhatsApp is switched off for this environment. Set
+                      <code className="text-[11px]">{" "}WHATSAPP_DRIVER</code>
+                      {" to \u201cmeta\u201d or \u201ctwilio\u201d on the server to enable it."}
                     </p>
-                  ) : null}
-
-                  <div className="space-y-2">
-                    <Label htmlFor="wasender-api-key">WasenderAPI session key</Label>
-                    <Input
-                      id="wasender-api-key"
-                      type="password"
-                      autoComplete="off"
-                      placeholder={
-                        whatsappInbox?.configured
-                          ? "Paste a new key to replace the saved one"
-                          : "Paste your session API key from WasenderAPI"
-                      }
-                      value={whatsappKeyDraft}
-                      disabled={saveWhatsapp.isPending}
-                      onChange={(e) => setWhatsappKeyDraft(e.target.value)}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Each restaurant uses its own WhatsApp number via a
-                      WasenderAPI session. Find the session API key in your
-                      WasenderAPI dashboard.
-                    </p>
-                  </div>
-
-                  <Button
-                    type="button"
-                    disabled={saveWhatsapp.isPending || whatsappKeyDraft.trim().length < 16}
-                    onClick={handleSaveWhatsappKey}
-                  >
-                    {whatsappInbox?.configured ? "Update API key" : "Save API key"}
-                  </Button>
-
-                  {whatsappInbox?.configured && whatsappInbox.webhook_url ? (
-                    <div className="space-y-2 rounded-lg border border-border bg-muted/20 p-4">
-                      <Label className="text-xs font-semibold">Webhook URL</Label>
-                      <p className="text-xs text-muted-foreground">
-                        Paste this URL into WasenderAPI webhook settings so
-                        inbound messages appear in your inbox.
-                      </p>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <code className="max-w-full flex-1 truncate rounded bg-background px-2 py-1 text-[11px]">
-                          {whatsappInbox.webhook_url}
-                        </code>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={handleCopyWebhook}
-                        >
-                          <Copy className="mr-1.5 size-3.5" aria-hidden />
-                          Copy
-                        </Button>
-                      </div>
-                      <Button asChild variant="link" className="h-auto p-0 text-xs">
-                        <Link href="/messages">Open WhatsApp inbox →</Link>
-                      </Button>
-                    </div>
-                  ) : null}
-                    </>
                   )}
                 </div>
               </Card>

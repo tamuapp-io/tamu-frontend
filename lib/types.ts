@@ -688,7 +688,7 @@ export interface TenantSettingsSnapshot {
   booking_rules: BookingRuleRow[];
   /** Weekly service windows + slot grid inputs; omit on older backends. */
   operating_hours?: OperatingHourRow[];
-  /** WasenderAPI inbox connection (API key redacted; webhook URL when configured). */
+  /** WhatsApp inbox connection (secrets redacted; webhook URL when configured). */
   whatsapp_inbox?: WhatsappInboxStatus;
 }
 
@@ -696,9 +696,16 @@ export interface WhatsappInboxStatus {
   configured: boolean;
   session_connected?: boolean | null;
   webhook_url: string | null;
-  api_key_hint: string | null;
-  provider?: "meta" | "wasenderapi";
+  /**
+   * Platform-wide driver. "meta" is one platform number set up in env;
+   * "twilio" means each venue connects its own account here; "none" is off.
+   */
+  provider?: "meta" | "twilio" | "none";
   driver?: string;
+  /** Twilio only — masked Account SID of the connected account. */
+  account_sid_hint?: string | null;
+  /** Twilio only — the venue's WhatsApp sender number or Messaging Service SID. */
+  sender?: string | null;
 }
 
 export interface WhatsappConversation {

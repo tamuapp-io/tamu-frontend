@@ -23,7 +23,7 @@ export function WhatsappContactAvatar({ name, avatarUrl, size = "md", className 
   return (
     <Avatar size={size} className={className}>
       {avatarUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element -- external Wasender CDN URL
+        // eslint-disable-next-line @next/next/no-img-element -- external provider CDN URL (arbitrary host)
         <img
           src={avatarUrl}
           alt=""

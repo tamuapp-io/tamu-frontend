@@ -50,8 +50,8 @@ function NotConfiguredState() {
       </div>
       <h2 className="text-lg font-semibold">Connect WhatsApp</h2>
       <p className="mt-2 text-sm text-muted-foreground">
-        Add your WasenderAPI session key in Settings → Notifications to receive
-        and reply to guest messages from your restaurant number.
+        Connect WhatsApp in Settings → Notifications to receive and reply to guest
+        messages from your restaurant number.
       </p>
       <Button asChild className="mt-6">
         <Link href="/settings">Open Settings</Link>
@@ -189,8 +189,8 @@ function MessagesPageContent() {
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden gap-3">
             {sessionDisconnected ? (
               <div className="shrink-0 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-950 dark:text-amber-100">
-                Your Wasender session is disconnected. Reconnect WhatsApp in the Wasender
-                dashboard, then save your session API key again in Settings → Notifications.
+                WhatsApp is connected but the provider is rejecting its credentials, so
+                messages can&apos;t be sent. Check the connection in Settings → Notifications.
               </div>
             ) : null}
           <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden rounded-xl border border-border bg-card shadow-xs lg:grid-cols-[25%_50%_25%]">
@@ -210,8 +210,8 @@ function MessagesPageContent() {
                   </div>
                 ) : sidebarRows.length === 0 ? (
                   <p className="p-4 text-sm text-muted-foreground">
-                    No messages yet. Share your number with guests or paste the
-                    webhook URL from Settings into WasenderAPI.
+                    No messages yet. Share your number with guests, and make sure the
+                    webhook URL from Settings is set up with your WhatsApp provider.
                   </p>
                 ) : (
                   <ul className="divide-y divide-border">
